@@ -48,7 +48,7 @@ func init() {
 			return err
 		}
 		return nil
-	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) error {
+	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*Transfer)
 
 		sn := ctx.Snapshot()
@@ -61,22 +61,22 @@ func init() {
 
 		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		fromBalance := fromAcc.Balance(tx.TokenCoord)
 		if fromBalance.Less(Fee) {
-			return ErrInsuffcientBalance
+			return nil, ErrInsuffcientBalance
 		}
 		fromBalance = fromBalance.Sub(Fee)
 
 		if fromBalance.Less(tx.Amount) {
-			return ErrInsuffcientBalance
+			return nil, ErrInsuffcientBalance
 		}
 		fromBalance = fromBalance.Sub(tx.Amount)
 
 		toAcc, err := ctx.Account(tx.To)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		toBalance := toAcc.Balance(tx.TokenCoord)
 		toBalance = toBalance.Add(tx.Amount)
@@ -84,7 +84,7 @@ func init() {
 
 		fromAcc.SetBalance(tx.TokenCoord, fromBalance)
 		ctx.Commit(sn)
-		return nil
+		return nil, nil
 	})
 }
 

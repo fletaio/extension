@@ -45,56 +45,56 @@ func init() {
 			return err
 		}
 		return nil
-	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) error {
+	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*CreateMultiSigAccount)
 		if !ctx.IsMainChain() {
-			return ErrNotMainChain
+			return nil, ErrNotMainChain
 		}
 
 		if len(tx.KeyHashes) <= 1 {
-			return ErrInvalidMultiSigKeyHashCount
+			return nil, ErrInvalidMultiSigKeyHashCount
 		}
 		keyHashMap := map[common.PublicHash]bool{}
 		for _, v := range tx.KeyHashes {
 			keyHashMap[v] = true
 		}
 		if len(keyHashMap) != len(tx.KeyHashes) {
-			return ErrInvalidMultiSigKeyHashCount
+			return nil, ErrInvalidMultiSigKeyHashCount
 		}
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
 		if tx.Seq() != ctx.Seq(tx.From())+1 {
-			return ErrInvalidSequence
+			return nil, ErrInvalidSequence
 		}
 		ctx.AddSeq(tx.From())
 
 		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		chainCoord := ctx.ChainCoord()
 		balance := fromAcc.Balance(chainCoord)
 		if balance.Less(Fee) {
-			return ErrInsuffcientBalance
+			return nil, ErrInsuffcientBalance
 		}
 		balance = balance.Sub(Fee)
 
 		addr := common.NewAddress(coord, chainCoord, 0)
 		if is, err := ctx.IsExistAccount(addr); err != nil {
-			return err
+			return nil, err
 		} else if is {
-			return ErrExistAddress
+			return nil, ErrExistAddress
 		} else {
 			act, err := accounter.ByCoord(ctx.ChainCoord())
 			if err != nil {
-				return err
+				return nil, err
 			}
 			a, err := act.NewByTypeName("fleta.MultiSigAccount")
 			if err != nil {
-				return err
+				return nil, err
 			}
 			acc := a.(*account_def.MultiSigAccount)
 			acc.Address_ = addr
@@ -103,7 +103,7 @@ func init() {
 		}
 		fromAcc.SetBalance(chainCoord, balance)
 		ctx.Commit(sn)
-		return nil
+		return nil, nil
 	})
 }
 
