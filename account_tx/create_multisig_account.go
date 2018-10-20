@@ -19,19 +19,22 @@ import (
 func init() {
 	transactor.RegisterHandler("fleta.CreateMultiSigAccount", func(t transaction.Type) transaction.Transaction {
 		return &CreateMultiSigAccount{
-			Base: transaction.Base{
-				ChainCoord_: &common.Coordinate{},
-				Type_:       t,
+			Base: Base{
+				Base: transaction.Base{
+					ChainCoord_: &common.Coordinate{},
+					Type_:       t,
+				},
 			},
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
 		tx := t.(*CreateMultiSigAccount)
-		fromAcc, err := loader.Account(tx.From)
+		if tx.Seq() <= loader.Seq(tx.From()) {
+			return ErrInvalidSequence
+		}
+
+		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
-		}
-		if tx.Seq <= fromAcc.Seq() {
-			return ErrInvalidSequence
 		}
 
 		act, err := accounter.ByCoord(loader.ChainCoord())
@@ -62,12 +65,14 @@ func init() {
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
-		fromAcc, err := ctx.Account(tx.From)
+		if tx.Seq() != ctx.Seq(tx.From())+1 {
+			return ErrInvalidSequence
+		}
+		ctx.AddSeq(tx.From())
+
+		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return err
-		}
-		if tx.Seq != fromAcc.Seq()+1 {
-			return ErrInvalidSequence
 		}
 
 		chainCoord := ctx.ChainCoord()
@@ -97,7 +102,6 @@ func init() {
 			ctx.CreateAccount(acc)
 		}
 		fromAcc.SetBalance(chainCoord, balance)
-		ctx.AddSeq(fromAcc)
 		ctx.Commit(sn)
 		return nil
 	})
@@ -105,25 +109,8 @@ func init() {
 
 // CreateMultiSigAccount TODO
 type CreateMultiSigAccount struct {
-	transaction.Base
-	Seq       uint64
-	From      common.Address //MAXLEN : 255
+	Base
 	KeyHashes []common.PublicHash
-}
-
-// IsUTXO TODO
-func (tx *CreateMultiSigAccount) IsUTXO() bool {
-	return false
-}
-
-// Bucket TODO
-func (tx *CreateMultiSigAccount) Bucket() common.Address {
-	return tx.From
-}
-
-// BucketOrder TODO
-func (tx *CreateMultiSigAccount) BucketOrder() uint64 {
-	return tx.Seq
 }
 
 // Hash TODO
@@ -139,16 +126,6 @@ func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
 func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := util.WriteUint64(w, tx.Seq); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := tx.From.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -172,17 +149,6 @@ func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
-		return read, err
-	} else {
-		read += n
-	}
-	if v, n, err := util.ReadUint64(r); err != nil {
-		return read, err
-	} else {
-		read += n
-		tx.Seq = v
-	}
-	if n, err := tx.From.ReadFrom(r); err != nil {
 		return read, err
 	} else {
 		read += n

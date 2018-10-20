@@ -29,12 +29,13 @@ func init() {
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
 		tx := t.(*Burn)
+		if tx.Seq() <= loader.Seq(tx.From()) {
+			return ErrInvalidSequence
+		}
+
 		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
-		}
-		if tx.Seq() <= fromAcc.Seq() {
-			return ErrInvalidSequence
 		}
 		if tx.Amount.Less(amount.COIN.DivC(10)) {
 			return ErrDustAmount
@@ -53,14 +54,15 @@ func init() {
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
+		if tx.Seq() != ctx.Seq(tx.From())+1 {
+			return ErrInvalidSequence
+		}
+		ctx.AddSeq(tx.From())
+
 		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return err
 		}
-		if tx.Seq() != fromAcc.Seq()+1 {
-			return ErrInvalidSequence
-		}
-
 		fromBalance := fromAcc.Balance(tx.TokenCoord)
 		if fromBalance.Less(Fee) {
 			return ErrInsuffcientBalance
@@ -73,7 +75,6 @@ func init() {
 		fromBalance = fromBalance.Sub(tx.Amount)
 
 		fromAcc.SetBalance(tx.TokenCoord, fromBalance)
-		ctx.AddSeq(fromAcc)
 		ctx.Commit(sn)
 		return nil
 	})
@@ -84,21 +85,6 @@ type Burn struct {
 	Base
 	TokenCoord *common.Coordinate
 	Amount     *amount.Amount
-}
-
-// IsUTXO TODO
-func (tx *Burn) IsUTXO() bool {
-	return false
-}
-
-// From TODO
-func (tx *Burn) From() common.Address {
-	return tx.From_
-}
-
-// Seq TODO
-func (tx *Burn) Seq() uint64 {
-	return tx.Seq_
 }
 
 // Hash TODO

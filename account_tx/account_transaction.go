@@ -21,6 +21,21 @@ type Base struct {
 	From_ common.Address //MAXLEN : 255
 }
 
+// IsUTXO TODO
+func (tx *Base) IsUTXO() bool {
+	return false
+}
+
+// From TODO
+func (tx *Base) From() common.Address {
+	return tx.From_
+}
+
+// Seq TODO
+func (tx *Base) Seq() uint64 {
+	return tx.Seq_
+}
+
 // WriteTo TODO
 func (tx *Base) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64

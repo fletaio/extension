@@ -10,7 +10,6 @@ import (
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/hash"
-	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/data"
 	"git.fleta.io/fleta/core/transaction"
 )
@@ -18,21 +17,24 @@ import (
 func init() {
 	transactor.RegisterHandler("fleta.Transfer", func(t transaction.Type) transaction.Transaction {
 		return &Transfer{
-			Base: transaction.Base{
-				ChainCoord_: &common.Coordinate{},
-				Type_:       t,
+			Base: Base{
+				Base: transaction.Base{
+					ChainCoord_: &common.Coordinate{},
+					Type_:       t,
+				},
 			},
 			TokenCoord: &common.Coordinate{},
 			Amount:     amount.NewCoinAmount(0, 0),
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
 		tx := t.(*Transfer)
-		fromAcc, err := loader.Account(tx.From)
+		if tx.Seq() <= loader.Seq(tx.From()) {
+			return ErrInvalidSequence
+		}
+
+		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
-		}
-		if tx.Seq <= fromAcc.Seq() {
-			return ErrInvalidSequence
 		}
 		if tx.Amount.Less(amount.COIN.DivC(10)) {
 			return ErrDustAmount
@@ -52,14 +54,15 @@ func init() {
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
-		fromAcc, err := ctx.Account(tx.From)
+		if tx.Seq() != ctx.Seq(tx.From())+1 {
+			return ErrInvalidSequence
+		}
+		ctx.AddSeq(tx.From())
+
+		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return err
 		}
-		if tx.Seq != fromAcc.Seq()+1 {
-			return ErrInvalidSequence
-		}
-
 		fromBalance := fromAcc.Balance(tx.TokenCoord)
 		if fromBalance.Less(Fee) {
 			return ErrInsuffcientBalance
@@ -80,7 +83,6 @@ func init() {
 		toAcc.SetBalance(tx.TokenCoord, toBalance)
 
 		fromAcc.SetBalance(tx.TokenCoord, fromBalance)
-		ctx.AddSeq(fromAcc)
 		ctx.Commit(sn)
 		return nil
 	})
@@ -88,27 +90,10 @@ func init() {
 
 // Transfer TODO
 type Transfer struct {
-	transaction.Base
-	Seq        uint64
-	From       common.Address //MAXLEN : 255
+	Base
 	TokenCoord *common.Coordinate
 	Amount     *amount.Amount
 	To         common.Address
-}
-
-// IsUTXO TODO
-func (tx *Transfer) IsUTXO() bool {
-	return false
-}
-
-// Bucket TODO
-func (tx *Transfer) Bucket() common.Address {
-	return tx.From
-}
-
-// BucketOrder TODO
-func (tx *Transfer) BucketOrder() uint64 {
-	return tx.Seq
 }
 
 // Hash TODO
@@ -124,16 +109,6 @@ func (tx *Transfer) Hash() hash.Hash256 {
 func (tx *Transfer) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := util.WriteUint64(w, tx.Seq); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := tx.From.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -160,17 +135,6 @@ func (tx *Transfer) WriteTo(w io.Writer) (int64, error) {
 func (tx *Transfer) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
-		return read, err
-	} else {
-		read += n
-	}
-	if v, n, err := util.ReadUint64(r); err != nil {
-		return read, err
-	} else {
-		read += n
-		tx.Seq = v
-	}
-	if n, err := tx.From.ReadFrom(r); err != nil {
 		return read, err
 	} else {
 		read += n
