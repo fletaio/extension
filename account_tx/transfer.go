@@ -55,7 +55,7 @@ func init() {
 		defer ctx.Revert(sn)
 
 		if tx.Seq() != ctx.Seq(tx.From())+1 {
-			return ErrInvalidSequence
+			return nil, ErrInvalidSequence
 		}
 		ctx.AddSeq(tx.From())
 
