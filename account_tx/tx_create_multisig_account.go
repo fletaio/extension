@@ -81,6 +81,7 @@ func init() {
 			return nil, ErrInsuffcientBalance
 		}
 		balance = balance.Sub(Fee)
+		fromAcc.SetBalance(chainCoord, balance)
 
 		addr := common.NewAddress(coord, chainCoord, 0)
 		if is, err := ctx.IsExistAccount(addr); err != nil {
@@ -101,7 +102,6 @@ func init() {
 			acc.KeyHashes = tx.KeyHashes
 			ctx.CreateAccount(acc)
 		}
-		fromAcc.SetBalance(chainCoord, balance)
 		ctx.Commit(sn)
 		return nil, nil
 	})
