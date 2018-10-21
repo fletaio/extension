@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io"
 
+	"git.fleta.io/fleta/core/accounter"
 	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/transactor"
+	"git.fleta.io/fleta/extension/account_def"
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/hash"
@@ -15,8 +17,8 @@ import (
 )
 
 func init() {
-	transactor.RegisterHandler("fleta.Assign", func(t transaction.Type) transaction.Transaction {
-		return &Assign{
+	transactor.RegisterHandler("fleta.OpenAccount", func(t transaction.Type) transaction.Transaction {
+		return &OpenAccount{
 			Base: Base{
 				Base: transaction.Base{
 					ChainCoord_: &common.Coordinate{},
@@ -27,7 +29,7 @@ func init() {
 			Vout: []*transaction.TxOut{},
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
-		tx := t.(*Assign)
+		tx := t.(*OpenAccount)
 		if len(tx.Vin) == 0 {
 			return ErrInvalidTxInCount
 		}
@@ -52,7 +54,7 @@ func init() {
 		}
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
-		tx := t.(*Assign)
+		tx := t.(*OpenAccount)
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
@@ -81,19 +83,40 @@ func init() {
 			return nil, ErrInvalidOutputAmount
 		}
 
+		chainCoord := ctx.ChainCoord()
+		addr := common.NewAddress(coord, chainCoord, 0)
+		if is, err := ctx.IsExistAccount(addr); err != nil {
+			return nil, err
+		} else if is {
+			return nil, ErrExistAddress
+		} else {
+			act, err := accounter.ByCoord(ctx.ChainCoord())
+			if err != nil {
+				return nil, err
+			}
+			a, err := act.NewByTypeName("fleta.SingleAccount")
+			if err != nil {
+				return nil, err
+			}
+			acc := a.(*account_def.SingleAccount)
+			acc.Address_ = addr
+			acc.KeyHash = tx.KeyHash
+			ctx.CreateAccount(acc)
+		}
 		ctx.Commit(sn)
 		return nil, nil
 	})
 }
 
-// Assign TODO
-type Assign struct {
+// OpenAccount TODO
+type OpenAccount struct {
 	Base
-	Vout []*transaction.TxOut
+	Vout    []*transaction.TxOut
+	KeyHash common.PublicHash
 }
 
 // Hash TODO
-func (tx *Assign) Hash() hash.Hash256 {
+func (tx *OpenAccount) Hash() hash.Hash256 {
 	var buffer bytes.Buffer
 	if _, err := tx.WriteTo(&buffer); err != nil {
 		panic(err)
@@ -102,7 +125,7 @@ func (tx *Assign) Hash() hash.Hash256 {
 }
 
 // WriteTo TODO
-func (tx *Assign) WriteTo(w io.Writer) (int64, error) {
+func (tx *OpenAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
 		return wrote, err
@@ -121,11 +144,16 @@ func (tx *Assign) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 	}
+	if n, err := tx.KeyHash.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
 	return wrote, nil
 }
 
 // ReadFrom TODO
-func (tx *Assign) ReadFrom(r io.Reader) (int64, error) {
+func (tx *OpenAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
 		return read, err
@@ -146,6 +174,11 @@ func (tx *Assign) ReadFrom(r io.Reader) (int64, error) {
 				tx.Vout = append(tx.Vout, vout)
 			}
 		}
+	}
+	if n, err := tx.KeyHash.ReadFrom(r); err != nil {
+		return read, err
+	} else {
+		read += n
 	}
 	return read, nil
 }

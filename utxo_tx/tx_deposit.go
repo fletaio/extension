@@ -15,8 +15,8 @@ import (
 )
 
 func init() {
-	transactor.RegisterHandler("fleta.Assign", func(t transaction.Type) transaction.Transaction {
-		return &Assign{
+	transactor.RegisterHandler("fleta.Deposit", func(t transaction.Type) transaction.Transaction {
+		return &Deposit{
 			Base: Base{
 				Base: transaction.Base{
 					ChainCoord_: &common.Coordinate{},
@@ -27,12 +27,15 @@ func init() {
 			Vout: []*transaction.TxOut{},
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
-		tx := t.(*Assign)
+		tx := t.(*Deposit)
 		if len(tx.Vin) == 0 {
 			return ErrInvalidTxInCount
 		}
 		if len(signers) > 1 {
 			return ErrInvalidSignerCount
+		}
+		if tx.Amount.Less(amount.COIN.DivC(10)) {
+			return ErrDustAmount
 		}
 
 		for _, vin := range tx.Vin {
@@ -52,7 +55,7 @@ func init() {
 		}
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
-		tx := t.(*Assign)
+		tx := t.(*Deposit)
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
@@ -70,6 +73,7 @@ func init() {
 		}
 
 		outsum := Fee.Clone()
+		outsum = outsum.Add(tx.Amount)
 		for n, vout := range tx.Vout {
 			outsum = outsum.Add(vout.Amount)
 			if err := ctx.CreateUTXO(transaction.MarshalID(coord.Height, coord.Index, uint16(n)), vout); err != nil {
@@ -81,19 +85,31 @@ func init() {
 			return nil, ErrInvalidOutputAmount
 		}
 
+		chainCoord := ctx.ChainCoord()
+		toAcc, err := ctx.Account(tx.To)
+		if err != nil {
+			return nil, err
+		}
+		toBalance := toAcc.Balance(chainCoord)
+		toBalance = toBalance.Add(tx.Amount)
+		toAcc.SetBalance(chainCoord, toBalance)
+
 		ctx.Commit(sn)
 		return nil, nil
 	})
 }
 
-// Assign TODO
-type Assign struct {
+// Deposit TODO
+type Deposit struct {
 	Base
-	Vout []*transaction.TxOut
+	Vout   []*transaction.TxOut
+	Amount *amount.Amount
+	To     common.Address
+	Tag    []byte
 }
 
 // Hash TODO
-func (tx *Assign) Hash() hash.Hash256 {
+func (tx *Deposit) Hash() hash.Hash256 {
 	var buffer bytes.Buffer
 	if _, err := tx.WriteTo(&buffer); err != nil {
 		panic(err)
@@ -102,7 +118,7 @@ func (tx *Assign) Hash() hash.Hash256 {
 }
 
 // WriteTo TODO
-func (tx *Assign) WriteTo(w io.Writer) (int64, error) {
+func (tx *Deposit) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
 		return wrote, err
@@ -121,11 +137,26 @@ func (tx *Assign) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 	}
+	if n, err := tx.Amount.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := tx.To.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := util.WriteBytes8(w, tx.Tag); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
 	return wrote, nil
 }
 
 // ReadFrom TODO
-func (tx *Assign) ReadFrom(r io.Reader) (int64, error) {
+func (tx *Deposit) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
 		return read, err
@@ -146,6 +177,22 @@ func (tx *Assign) ReadFrom(r io.Reader) (int64, error) {
 				tx.Vout = append(tx.Vout, vout)
 			}
 		}
+	}
+	if n, err := tx.Amount.ReadFrom(r); err != nil {
+		return read, err
+	} else {
+		read += n
+	}
+	if n, err := tx.To.ReadFrom(r); err != nil {
+		return read, err
+	} else {
+		read += n
+	}
+	if bs, n, err := util.ReadBytes8(r); err != nil {
+		return read, err
+	} else {
+		read += n
+		tx.Tag = bs
 	}
 	return read, nil
 }

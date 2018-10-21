@@ -13,4 +13,5 @@ var (
 	ErrInvalidSignerCount          = errors.New("invalid signer count")
 	ErrNotMainChain                = errors.New("not main chain")
 	ErrDustAmount                  = errors.New("dust amount")
+	ErrExistAddress                = errors.New("exist address")
 )
