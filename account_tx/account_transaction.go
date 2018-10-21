@@ -8,12 +8,6 @@ import (
 	"git.fleta.io/fleta/core/transaction"
 )
 
-// AccountTransaction TODO
-type AccountTransaction interface {
-	Seq() uint64
-	From() common.Address
-}
-
 // Base TODO
 type Base struct {
 	transaction.Base

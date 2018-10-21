@@ -7,7 +7,6 @@ import (
 	"git.fleta.io/fleta/core/accounter"
 	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/transactor"
-	"git.fleta.io/fleta/extension/account_def"
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/hash"
@@ -17,20 +16,18 @@ import (
 )
 
 func init() {
-	transactor.RegisterHandler("fleta.CreateMultiSigAccount", func(t transaction.Type) transaction.Transaction {
-		return &CreateMultiSigAccount{
+	transactor.RegisterHandler("fleta.Withdraw", func(t transaction.Type) transaction.Transaction {
+		return &Withdraw{
 			Base: Base{
 				Base: transaction.Base{
 					ChainCoord_: &common.Coordinate{},
 					Type_:       t,
 				},
 			},
+			Vout: []*transaction.TxOut{},
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
-		tx := t.(*CreateMultiSigAccount)
-		if !transaction.IsMainChain(loader.ChainCoord()) {
-			return ErrNotMainChain
-		}
+		tx := t.(*Withdraw)
 		if tx.Seq() <= loader.Seq(tx.From()) {
 			return ErrInvalidSequence
 		}
@@ -38,6 +35,11 @@ func init() {
 		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
+		}
+		for _, vout := range tx.Vout {
+			if vout.Amount.Less(amount.COIN.DivC(10)) {
+				return ErrDustAmount
+			}
 		}
 
 		act, err := accounter.ByCoord(loader.ChainCoord())
@@ -49,18 +51,7 @@ func init() {
 		}
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
-		tx := t.(*CreateMultiSigAccount)
-
-		if len(tx.KeyHashes) <= 1 {
-			return nil, ErrInvalidMultiSigKeyHashCount
-		}
-		keyHashMap := map[common.PublicHash]bool{}
-		for _, v := range tx.KeyHashes {
-			keyHashMap[v] = true
-		}
-		if len(keyHashMap) != len(tx.KeyHashes) {
-			return nil, ErrInvalidMultiSigKeyHashCount
-		}
+		tx := t.(*Withdraw)
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
@@ -70,51 +61,44 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
+		chainCoord := ctx.ChainCoord()
 		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return nil, err
 		}
-
-		chainCoord := ctx.ChainCoord()
-		balance := fromAcc.Balance(chainCoord)
-		if balance.Less(Fee) {
+		fromBalance := fromAcc.Balance(chainCoord)
+		if fromBalance.Less(Fee) {
 			return nil, ErrInsuffcientBalance
 		}
-		balance = balance.Sub(Fee)
-		fromAcc.SetBalance(chainCoord, balance)
+		fromBalance = fromBalance.Sub(Fee)
 
-		addr := common.NewAddress(coord, chainCoord, 0)
-		if is, err := ctx.IsExistAccount(addr); err != nil {
-			return nil, err
-		} else if is {
-			return nil, ErrExistAddress
-		} else {
-			act, err := accounter.ByCoord(ctx.ChainCoord())
-			if err != nil {
+		outsum := amount.NewCoinAmount(0, 0)
+		for n, vout := range tx.Vout {
+			outsum = outsum.Add(vout.Amount)
+			if err := ctx.CreateUTXO(transaction.MarshalID(coord.Height, coord.Index, uint16(n)), vout); err != nil {
 				return nil, err
 			}
-			a, err := act.NewByTypeName("fleta.MultiSigAccount")
-			if err != nil {
-				return nil, err
-			}
-			acc := a.(*account_def.MultiSigAccount)
-			acc.Address_ = addr
-			acc.KeyHashes = tx.KeyHashes
-			ctx.CreateAccount(acc)
 		}
+
+		if fromBalance.Less(outsum) {
+			return nil, ErrInsuffcientBalance
+		}
+		fromBalance = fromBalance.Sub(outsum)
+
+		fromAcc.SetBalance(chainCoord, fromBalance)
 		ctx.Commit(sn)
 		return nil, nil
 	})
 }
 
-// CreateMultiSigAccount TODO
-type CreateMultiSigAccount struct {
+// Withdraw TODO
+type Withdraw struct {
 	Base
-	KeyHashes []common.PublicHash
+	Vout []*transaction.TxOut
 }
 
 // Hash TODO
-func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
+func (tx *Withdraw) Hash() hash.Hash256 {
 	var buffer bytes.Buffer
 	if _, err := tx.WriteTo(&buffer); err != nil {
 		panic(err)
@@ -123,18 +107,18 @@ func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
 }
 
 // WriteTo TODO
-func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
+func (tx *Withdraw) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
 	}
-	if n, err := util.WriteUint8(w, uint8(len(tx.KeyHashes))); err != nil {
+	if n, err := util.WriteUint8(w, uint8(len(tx.Vout))); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
-		for _, v := range tx.KeyHashes {
+		for _, v := range tx.Vout {
 			if n, err := v.WriteTo(w); err != nil {
 				return wrote, err
 			} else {
@@ -146,7 +130,7 @@ func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 }
 
 // ReadFrom TODO
-func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
+func (tx *Withdraw) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
 		return read, err
@@ -157,14 +141,14 @@ func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 		return read, err
 	} else {
 		read += n
-		tx.KeyHashes = make([]common.PublicHash, 0, Len)
+		tx.Vout = make([]*transaction.TxOut, 0, Len)
 		for i := 0; i < int(Len); i++ {
-			var pubhash common.PublicHash
-			if n, err := pubhash.ReadFrom(r); err != nil {
+			vout := &transaction.TxOut{}
+			if n, err := vout.ReadFrom(r); err != nil {
 				return read, err
 			} else {
 				read += n
-				tx.KeyHashes = append(tx.KeyHashes, pubhash)
+				tx.Vout = append(tx.Vout, vout)
 			}
 		}
 	}

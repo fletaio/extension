@@ -27,6 +27,9 @@ func init() {
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
 		tx := t.(*CreateAccount)
+		if !transaction.IsMainChain(loader.ChainCoord()) {
+			return ErrNotMainChain
+		}
 		if tx.Seq() <= loader.Seq(tx.From()) {
 			return ErrInvalidSequence
 		}
@@ -46,10 +49,6 @@ func init() {
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*CreateAccount)
-		if !ctx.IsMainChain() {
-			return nil, ErrNotMainChain
-		}
-
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
