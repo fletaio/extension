@@ -61,18 +61,7 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
-		chainCoord := ctx.ChainCoord()
-		fromAcc, err := ctx.Account(tx.From())
-		if err != nil {
-			return nil, err
-		}
-		fromBalance := fromAcc.Balance(chainCoord)
-		if fromBalance.Less(Fee) {
-			return nil, ErrInsuffcientBalance
-		}
-		fromBalance = fromBalance.Sub(Fee)
-
-		outsum := amount.NewCoinAmount(0, 0)
+		outsum := Fee.Clone()
 		for n, vout := range tx.Vout {
 			outsum = outsum.Add(vout.Amount)
 			if err := ctx.CreateUTXO(transaction.MarshalID(coord.Height, coord.Index, uint16(n)), vout); err != nil {
@@ -80,6 +69,12 @@ func init() {
 			}
 		}
 
+		chainCoord := ctx.ChainCoord()
+		fromAcc, err := ctx.Account(tx.From())
+		if err != nil {
+			return nil, err
+		}
+		fromBalance := fromAcc.Balance(chainCoord)
 		if fromBalance.Less(outsum) {
 			return nil, ErrInsuffcientBalance
 		}

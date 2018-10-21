@@ -32,13 +32,13 @@ func init() {
 		if tx.Seq() <= loader.Seq(tx.From()) {
 			return ErrInvalidSequence
 		}
+		if tx.Amount.Less(amount.COIN.DivC(10)) {
+			return ErrDustAmount
+		}
 
 		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
-		}
-		if tx.Amount.Less(amount.COIN.DivC(10)) {
-			return ErrDustAmount
 		}
 
 		act, err := accounter.ByCoord(loader.ChainCoord())
