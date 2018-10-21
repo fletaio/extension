@@ -21,7 +21,7 @@ func init() {
 		}
 	}, func(loader data.Loader, a account.Account, signers []common.PublicHash) error {
 		acc := a.(*LockedAccount)
-		if acc.UnlockHeight < loader.TargetHeight() {
+		if acc.UnlockHeight > loader.TargetHeight() {
 			return ErrLockedAccount
 		}
 		if len(signers) != 1 {
