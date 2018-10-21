@@ -8,4 +8,5 @@ import (
 var (
 	ErrInvalidSignerCount   = errors.New("invalid signer count")
 	ErrInvalidAccountSigner = errors.New("invalid account signer")
+	ErrLockedAccount        = errors.New("locked account")
 )

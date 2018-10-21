@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"git.fleta.io/fleta/common"
+	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/account"
 	"git.fleta.io/fleta/core/accounter"
 	"git.fleta.io/fleta/core/amount"
@@ -11,15 +12,18 @@ import (
 )
 
 func init() {
-	accounter.RegisterHandler("fleta.SingleAccount", func(t account.Type) account.Account {
-		return &SingleAccount{
+	accounter.RegisterHandler("fleta.LockedAccount", func(t account.Type) account.Account {
+		return &LockedAccount{
 			Base: account.Base{
 				Type_:       t,
 				BalanceHash: map[uint64]*amount.Amount{},
 			},
 		}
 	}, func(loader data.Loader, a account.Account, signers []common.PublicHash) error {
-		acc := a.(*SingleAccount)
+		acc := a.(*LockedAccount)
+		if acc.UnlockHeight < loader.TargetHeight() {
+			return ErrLockedAccount
+		}
 		if len(signers) != 1 {
 			return ErrInvalidSignerCount
 		}
@@ -31,19 +35,20 @@ func init() {
 	})
 }
 
-// SingleAccount TODO
-type SingleAccount struct {
+// LockedAccount TODO
+type LockedAccount struct {
 	account.Base
-	KeyHash common.PublicHash
+	UnlockHeight uint32
+	KeyHash      common.PublicHash
 }
 
 // Clone TODO
-func (acc *SingleAccount) Clone() account.Account {
+func (acc *LockedAccount) Clone() account.Account {
 	balanceHash := map[uint64]*amount.Amount{}
 	for k, v := range acc.BalanceHash {
 		balanceHash[k] = v.Clone()
 	}
-	return &SingleAccount{
+	return &LockedAccount{
 		Base: account.Base{
 			Address_:    acc.Address_,
 			Type_:       acc.Type_,
@@ -54,9 +59,14 @@ func (acc *SingleAccount) Clone() account.Account {
 }
 
 // WriteTo TODO
-func (acc *SingleAccount) WriteTo(w io.Writer) (int64, error) {
+func (acc *LockedAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := acc.Base.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := util.WriteUint32(w, acc.UnlockHeight); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -70,12 +80,18 @@ func (acc *SingleAccount) WriteTo(w io.Writer) (int64, error) {
 }
 
 // ReadFrom TODO
-func (acc *SingleAccount) ReadFrom(r io.Reader) (int64, error) {
+func (acc *LockedAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := acc.Base.ReadFrom(r); err != nil {
 		return read, err
 	} else {
 		read += n
+	}
+	if v, n, err := util.ReadUint32(r); err != nil {
+		return read, err
+	} else {
+		read += n
+		acc.UnlockHeight = v
 	}
 	if n, err := acc.KeyHash.ReadFrom(r); err != nil {
 		return read, err
