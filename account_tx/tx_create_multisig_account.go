@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 
-	"git.fleta.io/fleta/core/accounter"
 	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/transactor"
 	"git.fleta.io/fleta/extension/account_def"
@@ -40,11 +39,7 @@ func init() {
 			return err
 		}
 
-		act, err := accounter.ByCoord(loader.ChainCoord())
-		if err != nil {
-			return err
-		}
-		if err := act.Validate(loader, fromAcc, signers); err != nil {
+		if err := loader.Accounter().Validate(loader, fromAcc, signers); err != nil {
 			return err
 		}
 		return nil
@@ -89,11 +84,7 @@ func init() {
 		} else if is {
 			return nil, ErrExistAddress
 		} else {
-			act, err := accounter.ByCoord(ctx.ChainCoord())
-			if err != nil {
-				return nil, err
-			}
-			a, err := act.NewByTypeName("fleta.MultiSigAccount")
+			a, err := ctx.Accounter().NewByTypeName("fleta.MultiSigAccount")
 			if err != nil {
 				return nil, err
 			}

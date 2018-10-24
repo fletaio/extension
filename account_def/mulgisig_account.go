@@ -6,13 +6,12 @@ import (
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/account"
-	"git.fleta.io/fleta/core/accounter"
 	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/data"
 )
 
 func init() {
-	accounter.RegisterHandler("fleta.MultiSigAccount", func(t account.Type) account.Account {
+	data.RegisterAccount("fleta.MultiSigAccount", func(t account.Type) account.Account {
 		return &MultiSigAccount{
 			Base: account.Base{
 				Type_:       t,
