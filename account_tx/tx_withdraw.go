@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"git.fleta.io/fleta/core/amount"
-	"git.fleta.io/fleta/core/transactor"
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/hash"
@@ -15,7 +14,7 @@ import (
 )
 
 func init() {
-	transactor.RegisterHandler("fleta.Withdraw", func(t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.Withdraw", func(t transaction.Type) transaction.Transaction {
 		return &Withdraw{
 			Base: Base{
 				Base: transaction.Base{

@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"git.fleta.io/fleta/core/amount"
-	"git.fleta.io/fleta/core/transactor"
 	"git.fleta.io/fleta/extension/account_def"
 
 	"git.fleta.io/fleta/common"
@@ -15,7 +14,7 @@ import (
 )
 
 func init() {
-	transactor.RegisterHandler("fleta.CreateAccount", func(t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.CreateAccount", func(t transaction.Type) transaction.Transaction {
 		return &CreateAccount{
 			Base: Base{
 				Base: transaction.Base{
