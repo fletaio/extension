@@ -146,7 +146,7 @@ func (tx *Deposit) WriteTo(w io.Writer) (int64, error) {
 	} else {
 		wrote += n
 	}
-	if n, err := util.WriteBytes8(w, tx.Tag); err != nil {
+	if n, err := util.WriteBytes(w, tx.Tag); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -187,7 +187,7 @@ func (tx *Deposit) ReadFrom(r io.Reader) (int64, error) {
 	} else {
 		read += n
 	}
-	if bs, n, err := util.ReadBytes8(r); err != nil {
+	if bs, n, err := util.ReadBytes(r); err != nil {
 		return read, err
 	} else {
 		read += n
