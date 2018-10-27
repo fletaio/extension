@@ -30,13 +30,14 @@ func init() {
 	})
 }
 
-// SingleAccount TODO
+// SingleAccount is a fleta.SingleAccount
+// It is used as a basic account
 type SingleAccount struct {
 	account.Base
 	KeyHash common.PublicHash
 }
 
-// Clone TODO
+// Clone returns the clonend value of it
 func (acc *SingleAccount) Clone() account.Account {
 	balanceHash := map[uint64]*amount.Amount{}
 	for k, v := range acc.BalanceHash {
@@ -52,7 +53,7 @@ func (acc *SingleAccount) Clone() account.Account {
 	}
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (acc *SingleAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := acc.Base.WriteTo(w); err != nil {
@@ -68,7 +69,7 @@ func (acc *SingleAccount) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (acc *SingleAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := acc.Base.ReadFrom(r); err != nil {

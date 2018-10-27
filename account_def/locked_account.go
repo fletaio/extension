@@ -34,14 +34,15 @@ func init() {
 	})
 }
 
-// LockedAccount TODO
+// LockedAccount is a fleta.LockedAccount
+// It is used to prevent transactions from the locked account until the unlock height
 type LockedAccount struct {
 	account.Base
 	UnlockHeight uint32
 	KeyHash      common.PublicHash
 }
 
-// Clone TODO
+// Clone returns the clonend value of it
 func (acc *LockedAccount) Clone() account.Account {
 	balanceHash := map[uint64]*amount.Amount{}
 	for k, v := range acc.BalanceHash {
@@ -57,7 +58,7 @@ func (acc *LockedAccount) Clone() account.Account {
 	}
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (acc *LockedAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := acc.Base.WriteTo(w); err != nil {
@@ -78,7 +79,7 @@ func (acc *LockedAccount) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (acc *LockedAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := acc.Base.ReadFrom(r); err != nil {

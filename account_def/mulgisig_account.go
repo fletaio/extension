@@ -40,14 +40,15 @@ func init() {
 	})
 }
 
-// MultiSigAccount TODO
+// MultiSigAccount is a fleta.MultiSigAccount
+// It is used to sign transaction using multiple keys
 type MultiSigAccount struct {
 	account.Base
 	Required  uint8
 	KeyHashes []common.PublicHash
 }
 
-// Clone TODO
+// Clone returns the clonend value of it
 func (acc *MultiSigAccount) Clone() account.Account {
 	balanceHash := map[uint64]*amount.Amount{}
 	for k, v := range acc.BalanceHash {
@@ -68,7 +69,7 @@ func (acc *MultiSigAccount) Clone() account.Account {
 	}
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (acc *MultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := acc.Base.WriteTo(w); err != nil {
@@ -96,7 +97,7 @@ func (acc *MultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (acc *MultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := acc.Base.ReadFrom(r); err != nil {
