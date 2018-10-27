@@ -7,18 +7,18 @@ import (
 	"git.fleta.io/fleta/core/transaction"
 )
 
-// Base TODO
+// Base is the parts of UTXO model based transaction functions that are not changed by derived one
 type Base struct {
 	transaction.Base
 	Vin []*transaction.TxIn
 }
 
-// IsUTXO TODO
+// IsUTXO returns true
 func (tx *Base) IsUTXO() bool {
 	return true
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (tx *Base) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
@@ -41,7 +41,7 @@ func (tx *Base) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (tx *Base) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
