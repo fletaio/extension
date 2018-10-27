@@ -84,13 +84,14 @@ func init() {
 	})
 }
 
-// CreateAccount TODO
+// CreateAccount is a fleta.CreateAccount
+// It is used to make a single account
 type CreateAccount struct {
 	Base
 	KeyHash common.PublicHash
 }
 
-// Hash TODO
+// Hash returns the hash value of it
 func (tx *CreateAccount) Hash() hash.Hash256 {
 	var buffer bytes.Buffer
 	if _, err := tx.WriteTo(&buffer); err != nil {
@@ -99,7 +100,7 @@ func (tx *CreateAccount) Hash() hash.Hash256 {
 	return hash.DoubleHash(buffer.Bytes())
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (tx *CreateAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
@@ -115,7 +116,7 @@ func (tx *CreateAccount) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (tx *CreateAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {

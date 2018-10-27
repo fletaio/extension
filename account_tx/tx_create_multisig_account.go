@@ -97,13 +97,14 @@ func init() {
 	})
 }
 
-// CreateMultiSigAccount TODO
+// CreateMultiSigAccount is a fleta.CreateMultiSigAccount
+// It is used to make multi-sig account
 type CreateMultiSigAccount struct {
 	Base
 	KeyHashes []common.PublicHash
 }
 
-// Hash TODO
+// Hash returns the hash value of it
 func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
 	var buffer bytes.Buffer
 	if _, err := tx.WriteTo(&buffer); err != nil {
@@ -112,7 +113,7 @@ func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
 	return hash.DoubleHash(buffer.Bytes())
 }
 
-// WriteTo TODO
+// WriteTo is a serialization function
 func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
@@ -135,7 +136,7 @@ func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	return wrote, nil
 }
 
-// ReadFrom TODO
+// ReadFrom is a deserialization function
 func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
