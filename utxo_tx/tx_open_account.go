@@ -161,7 +161,7 @@ func (tx *OpenAccount) ReadFrom(r io.Reader) (int64, error) {
 		read += n
 		tx.Vout = make([]*transaction.TxOut, 0, Len)
 		for i := 0; i < int(Len); i++ {
-			vout := &transaction.TxOut{}
+			vout := transaction.NewTxOut()
 			if n, err := vout.ReadFrom(r); err != nil {
 				return read, err
 			} else {
