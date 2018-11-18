@@ -64,17 +64,16 @@ func init() {
 		}
 
 		chainCoord := ctx.ChainCoord()
-		fromAcc, err := ctx.Account(tx.From())
+		fromBalance, err := ctx.AccountBalance(tx.From())
 		if err != nil {
 			return nil, err
 		}
-		fromBalance := fromAcc.Balance(chainCoord)
-		if fromBalance.Less(outsum) {
-			return nil, ErrInsuffcientBalance
+		if err := fromBalance.SubBalance(chainCoord, Fee); err != nil {
+			return nil, err
 		}
-		fromBalance = fromBalance.Sub(outsum)
-
-		fromAcc.SetBalance(chainCoord, fromBalance)
+		if err := fromBalance.SubBalance(chainCoord, outsum); err != nil {
+			return nil, err
+		}
 		ctx.Commit(sn)
 		return nil, nil
 	})

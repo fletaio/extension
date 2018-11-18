@@ -6,7 +6,6 @@ import (
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/account"
-	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/data"
 )
 
@@ -14,8 +13,7 @@ func init() {
 	data.RegisterAccount("fleta.LockedAccount", func(t account.Type) account.Account {
 		return &LockedAccount{
 			Base: account.Base{
-				Type_:       t,
-				BalanceHash: map[uint64]*amount.Amount{},
+				Type_: t,
 			},
 		}
 	}, func(loader data.Loader, a account.Account, signers []common.PublicHash) error {
@@ -44,15 +42,10 @@ type LockedAccount struct {
 
 // Clone returns the clonend value of it
 func (acc *LockedAccount) Clone() account.Account {
-	balanceHash := map[uint64]*amount.Amount{}
-	for k, v := range acc.BalanceHash {
-		balanceHash[k] = v.Clone()
-	}
 	return &LockedAccount{
 		Base: account.Base{
-			Address_:    acc.Address_,
-			Type_:       acc.Type_,
-			BalanceHash: balanceHash,
+			Address_: acc.Address_,
+			Type_:    acc.Type_,
 		},
 		KeyHash: acc.KeyHash.Clone(),
 	}

@@ -6,7 +6,6 @@ import (
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/account"
-	"git.fleta.io/fleta/core/amount"
 	"git.fleta.io/fleta/core/data"
 )
 
@@ -14,8 +13,7 @@ func init() {
 	data.RegisterAccount("fleta.MultiSigAccount", func(t account.Type) account.Account {
 		return &MultiSigAccount{
 			Base: account.Base{
-				Type_:       t,
-				BalanceHash: map[uint64]*amount.Amount{},
+				Type_: t,
 			},
 		}
 	}, func(loader data.Loader, a account.Account, signers []common.PublicHash) error {
@@ -50,19 +48,14 @@ type MultiSigAccount struct {
 
 // Clone returns the clonend value of it
 func (acc *MultiSigAccount) Clone() account.Account {
-	balanceHash := map[uint64]*amount.Amount{}
-	for k, v := range acc.BalanceHash {
-		balanceHash[k] = v.Clone()
-	}
 	keyHashes := make([]common.PublicHash, 0, len(acc.KeyHashes))
 	for _, v := range acc.KeyHashes {
 		keyHashes = append(keyHashes, v.Clone())
 	}
 	return &MultiSigAccount{
 		Base: account.Base{
-			Address_:    acc.Address_,
-			Type_:       acc.Type_,
-			BalanceHash: balanceHash,
+			Address_: acc.Address_,
+			Type_:    acc.Type_,
 		},
 		Required:  acc.Required,
 		KeyHashes: keyHashes,

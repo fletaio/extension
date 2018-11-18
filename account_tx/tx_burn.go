@@ -53,22 +53,16 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
-		fromAcc, err := ctx.Account(tx.From())
+		fromBalance, err := ctx.AccountBalance(tx.From())
 		if err != nil {
 			return nil, err
 		}
-		fromBalance := fromAcc.Balance(tx.TokenCoord)
-		if fromBalance.Less(Fee) {
-			return nil, ErrInsuffcientBalance
+		if err := fromBalance.SubBalance(tx.TokenCoord, Fee); err != nil {
+			return nil, err
 		}
-		fromBalance = fromBalance.Sub(Fee)
-
-		if fromBalance.Less(tx.Amount) {
-			return nil, ErrInsuffcientBalance
+		if err := fromBalance.SubBalance(tx.TokenCoord, tx.Amount); err != nil {
+			return nil, err
 		}
-		fromBalance = fromBalance.Sub(tx.Amount)
-
-		fromAcc.SetBalance(tx.TokenCoord, fromBalance)
 		ctx.Commit(sn)
 		return nil, nil
 	})

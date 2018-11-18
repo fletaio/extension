@@ -85,13 +85,11 @@ func init() {
 		}
 
 		chainCoord := ctx.ChainCoord()
-		toAcc, err := ctx.Account(tx.To)
+		toBalance, err := ctx.AccountBalance(tx.To)
 		if err != nil {
 			return nil, err
 		}
-		toBalance := toAcc.Balance(chainCoord)
-		toBalance = toBalance.Add(tx.Amount)
-		toAcc.SetBalance(chainCoord, toBalance)
+		toBalance.AddBalance(chainCoord, tx.Amount)
 
 		ctx.Commit(sn)
 		return nil, nil
