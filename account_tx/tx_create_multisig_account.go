@@ -15,11 +15,11 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.CreateMultiSigAccount", func(t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.CreateMultiSigAccount", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
 		return &CreateMultiSigAccount{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: &common.Coordinate{},
+					ChainCoord_: coord,
 					Type_:       t,
 				},
 			},

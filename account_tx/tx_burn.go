@@ -14,15 +14,15 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.Burn", func(t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.Burn", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
 		return &Burn{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: &common.Coordinate{},
+					ChainCoord_: coord,
 					Type_:       t,
 				},
 			},
-			TokenCoord: &common.Coordinate{},
+			TokenCoord: coord.Clone(),
 			Amount:     amount.NewCoinAmount(0, 0),
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {

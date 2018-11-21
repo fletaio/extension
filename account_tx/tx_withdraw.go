@@ -14,11 +14,11 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.Withdraw", func(t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.Withdraw", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
 		return &Withdraw{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: &common.Coordinate{},
+					ChainCoord_: coord,
 					Type_:       t,
 				},
 			},
