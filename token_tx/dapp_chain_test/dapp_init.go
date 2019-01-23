@@ -1,4 +1,4 @@
-package dapp_chain
+package dappChainTest
 
 import (
 	"log"
@@ -104,20 +104,13 @@ func initDAppChainComponent(act *data.Accounter, tran *data.Transactor) error {
 	return nil
 }
 
-func initDAppGenesisContextData(st *store.Store, ctd *data.ContextData, PublicHashs []string) error {
-	acg := &accDAppCoordGenerator{idx: 1}
-	for _, PublicHash := range PublicHashs {
-		a := acg.Generate()
-		s := st.ChainCoord()
-		addr := common.NewAddress(a, s, 0)
-		log.Println("dapp addr : ", addr.String(), a.Height, " : ", a.Index, " : ", s.Height, " : ", s.Index)
+func initDAppGenesisContextData(st *store.Store, ctd *data.ContextData) error {
+	for i, k := range ADDR.DAppFormulator {
+		PublicHash := k.Hash
+		addr := ADDR.DAppFormulator[i].Addr
 		addDAppFormulator(st.Accounter(), ctd, common.MustParsePublicHash(PublicHash), addr)
 	}
-	a := acg.Generate()
-	s := st.ChainCoord()
-	addr := common.NewAddress(a, s, 0)
-	log.Println("dapp account : ", addr.String(), a.Height, " : ", a.Index, " : ", s.Height, " : ", s.Index)
-	addDAppSingleAccount(st.Accounter(), s, ctd, common.MustParsePublicHash("2ndv1i9toF393VeqLbsFtuWD2xtXfCETZGmHdXDVnwo"), addr)
+	addDAppSingleAccount(st.Accounter(), st.ChainCoord(), ctd, common.MustParsePublicHash(ADDR.DAppAccount.Hash), ADDR.DAppAccount.Addr)
 	// addFormulator(st, ctd, common.MustParsePublicHash("2VdGunZe8yZNm2mErqQqrFx2B7Mb4SBRPWviWnapahw"), common.NewAddress(acg.Generate(), st.ChainCoord(), 0))
 	return nil
 }
@@ -145,14 +138,4 @@ func addDAppFormulator(act *data.Accounter, ctd *data.ContextData, KeyHash commo
 	acc.Address_ = addr
 	acc.KeyHash = KeyHash
 	ctd.CreatedAccountHash[acc.Address_] = acc
-}
-
-type accDAppCoordGenerator struct {
-	idx uint16
-}
-
-func (acg *accDAppCoordGenerator) Generate() *common.Coordinate {
-	coord := common.NewCoordinate(0, acg.idx)
-	acg.idx++
-	return coord
 }

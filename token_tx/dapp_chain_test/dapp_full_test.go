@@ -1,7 +1,6 @@
-package dapp_chain
+package dappChainTest
 
 import (
-	"encoding/hex"
 	"log"
 	"os"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"git.fleta.io/fleta/framework/router/evilnode"
 
 	"git.fleta.io/fleta/extension/account_def"
+	"git.fleta.io/fleta/extension/account_tx"
 	"git.fleta.io/fleta/extension/token_tx"
 	_ "git.fleta.io/fleta/extension/utxo_tx"
 
@@ -33,35 +33,35 @@ func Test_dapp_chain(t *testing.T) {
 	os.RemoveAll("./_data")
 
 	t.Run("dapp_test", func(t *testing.T) {
-		pHash1 := "Qdd6uH7cz4GJmgNAAXPZwSFDRd2CLhSh5c6x24z3eS"
 		ObserverPhashs := []token_tx.ObserverInfo{
-			{Hash: "3usuNFwAzsMYCjgExThqRn8NPziNdD5rNoqM5xuUn7d", URL: "opserver_0"},
-			{Hash: "4ntZxpT6QHiuhULDvEMyUvCFjx3qZhYXNTeBdKXyMef", URL: "opserver_1"},
-			{Hash: "2dvU82rd2h175pqanTWfVamXxadgaVuJ3ED2wfesD44", URL: "opserver_2"},
-			{Hash: "3gvjLyf3m1ZzC8VPv2CkjJcp5L7bBHTL8WfPxH84Y79", URL: "opserver_3"},
-			{Hash: "2BCRboUG6aQDi653n47zsbQ8hpaC7nDfgTScSJr4c5Y", URL: "opserver_4"},
+			{Hash: ADDR.DAppObserver[0].Hash, URL: "opserver_0"},
+			{Hash: ADDR.DAppObserver[1].Hash, URL: "opserver_1"},
+			{Hash: ADDR.DAppObserver[2].Hash, URL: "opserver_2"},
+			{Hash: ADDR.DAppObserver[3].Hash, URL: "opserver_3"},
+			{Hash: ADDR.DAppObserver[4].Hash, URL: "opserver_4"},
 		}
 
+		dappInit(DappCoor)
+		addr := common.NewAddress(DappCoor, MainCoor, 0)
+
+		log.Println(addr.String())
 		Addr := common.MustParseAddress("5QxWJopN3")
-		Hash := common.MustParsePublicHash(pHash1)
+		// Hash := common.MustParsePublicHash(ADDR.MainTokenHash)
 
-		DApp := &DApp{
-			secureKey: "f0507dc42f6ce962c85bc23770f39b33d0a89033b4e4bf7f075bde9b67605972",
-		}
-		DApp.InitDAppChain(Hash, Addr, ObserverPhashs)
+		DApp := &DApp{}
+		DApp.InitDAppChain(Addr, ObserverPhashs)
 		genHash := DApp.GenesisHash()
-		DApp.RunDAppChain(Hash, Addr, genHash)
+		DApp.RunDAppChain(Addr, genHash)
 	})
 }
 
 type DappStarterEventHandler struct {
 	kernel.EventHandlerBase
 	DApp                     *DApp
-	kn                       *kernel.Kernel
 	TokenCreationInformation token_tx.TokenCreationInformation
 	accountAddr              common.Address
 	accountSigner            *key.MemoryKey
-	pHash                    string
+	TokenPublicHash          string
 }
 
 func (eh *DappStarterEventHandler) AfterAppendBlock(b *block.Block, s *block.ObserverSigned, ctx *data.Context) error {
@@ -71,48 +71,80 @@ func (eh *DappStarterEventHandler) AfterAppendBlock(b *block.Block, s *block.Obs
 			// if tx's coordinate == dapp chain coord
 			coord := common.NewCoordinate(b.Header.Height, uint16(i))
 			addr := common.NewAddress(coord, &b.Header.ChainCoord, 0)
+			// tx주소가 dapp의 chain 주소가 됨
 			if addr != common.MustParseAddress("5QxWJopN3") {
 				break
 			}
+			ADDR.MainToken.Addr = addr
 			// check hash and genesis context hash
-			if tx.KeyHash.String() != "Qdd6uH7cz4GJmgNAAXPZwSFDRd2CLhSh5c6x24z3eS" {
+			if tx.TokenPublicHash.String() != eh.TokenPublicHash {
 				break
 			}
+			go func(coord *common.Coordinate, tx *token_tx.TokenCreation) {
+				dappInit(coord)
+				log.Println("coord.Index ", coord.Index, "coord.Height", coord.Height)
 
-			eh.DApp.InitDAppChain(tx.KeyHash, addr, eh.TokenCreationInformation.ObserverInfos)
-			genHash := eh.DApp.GenesisHash()
-			eh.TokenCreationInformation.GenesisContextHash = genHash
+				eh.DApp.InitDAppChain(addr, eh.TokenCreationInformation.ObserverInfos)
+				genHash := eh.DApp.GenesisHash()
+				eh.TokenCreationInformation.GenesisContextHash = genHash
 
-			// dapp_chain.RunChain(tx.KeyHash, addr, ObserverPhashs)
-			{
-				// start CreateContract
-				cc, err := eh.kn.Loader().Transactor().NewByTypeName("fleta.ChainInitialization")
-				if err != nil {
-					panic(err)
+				// dapp_chain.RunChain(tx.KeyHash, addr, ObserverPhashs)
+				Seq := eh.DApp.MainKn.Loader().Seq(eh.accountAddr) + 1
+				{
+					// start CreateContract
+					cc, err := eh.DApp.MainKn.Loader().Transactor().NewByTypeName("fleta.ChainInitialization")
+					if err != nil {
+						panic(err)
+					}
+					t := cc.(*token_tx.ChainInitialization)
+					t.From_ = eh.accountAddr
+					t.TokenCreationInformation = eh.TokenCreationInformation
+					t.Seq_ = Seq
+					Seq++
+
+					sig0, _ := eh.accountSigner.Sign(t.Hash())
+					sigs0 := []common.Signature{sig0}
+
+					eh.DApp.MainKn.AddTransaction(t, sigs0)
+					// end CreateContract
 				}
-				t := cc.(*token_tx.ChainInitialization)
-				t.From_ = eh.accountAddr
-				t.TokenCreationInformation = eh.TokenCreationInformation
-				t.Seq_ = eh.kn.Loader().Seq(eh.accountAddr) + 1
+				{
+					printBalance(eh.DApp.MainKn, MainCoor, ADDR.MainAccount.Addr, ADDR.MainToken.Addr)
+					// start Transfer
+					cc, err := eh.DApp.MainKn.Loader().Transactor().NewByTypeName("fleta.Transfer")
+					if err != nil {
+						panic(err)
+					}
+					t := cc.(*account_tx.Transfer)
 
-				sig0, _ := eh.accountSigner.Sign(t.Hash())
-				sigs0 := []common.Signature{sig0}
+					t.Seq_ = Seq
+					t.From_ = ADDR.MainAccount.Addr
+					t.To = ADDR.MainToken.Addr
+					t.Amount = amount.NewCoinAmount(500000, 0)
 
-				eh.kn.AddTransaction(t, sigs0)
-				// end CreateContract
-			}
+					sig1, _ := ADDR.MainAccount.Signer.Sign(t.Hash())
+					sigs1 := []common.Signature{sig1}
+
+					eh.DApp.MainKn.AddTransaction(t, sigs1)
+					// end Transfer
+					printBalance(eh.DApp.MainKn, MainCoor, ADDR.MainAccount.Addr, ADDR.MainToken.Addr)
+				}
+			}(coord, tx)
+
 		case *token_tx.ChainInitialization:
 			//check chaininfo
-			genHash := eh.DApp.GenesisHash()
-			if tx.TokenCreationInformation.GenesisContextHash != genHash {
-				break
-			}
+			go func(tx *token_tx.ChainInitialization) {
+				genHash := eh.DApp.GenesisHash()
+				if tx.TokenCreationInformation.GenesisContextHash != genHash {
+					return
+				}
 
-			if !eh.TokenCreationInformation.Equal(&tx.TokenCreationInformation) {
-				break
-			}
+				if !eh.TokenCreationInformation.Equal(&tx.TokenCreationInformation) {
+					return
+				}
 
-			go eh.DApp.RunDAppChain(common.MustParsePublicHash(eh.pHash), common.MustParseAddress("5QxWJopN3"), genHash)
+				go eh.DApp.RunDAppChain(common.MustParseAddress("5QxWJopN3"), genHash)
+			}(tx)
 		}
 	}
 
@@ -125,95 +157,54 @@ func Test_JStest(t *testing.T) {
 	t.Run("dapp_test", func(t *testing.T) {
 		SeedNodes := []string{"formulator_0:3000"}
 
-		ObserverPhashs := []string{
-			"3e5PNobd577YEdjeb59zG6N7BBZbyRKMja2s55QQMQE",
-			"4ry8UmsCbo1BPTmUhqjMWgy9UtLDFcebEsc4Lgjo9ba",
-			"4KT4crmdp5GDihPXufUonmAujjC1YH4viej8C1udjc4",
-			"3suqtMQWdUFUwDGMzH53KRJPFzqaP6YYRqRGMPLhhp5",
-			"3HLUjZYeUDc7nGKqCaRyqB8yJHwj3BgFMWUYNmMSYfE",
-		}
-		obSks := []string{
-			"cca49818f6c49cf57b6c420cdcd98fcae08850f56d2ff5b8d287fddc7f9ede08",
-			"39f1a02bed5eff3f6247bb25564cdaef20d410d77ef7fc2c0181b1d5b31ce877",
-			"2b97bc8f21215b7ed085cbbaa2ea020ded95463deef6cbf31bb1eadf826d4694",
-			"3b43d728deaa62d7c8790636bdabbe7148a6641e291fd1f94b157673c0172425",
-			"e6cf2724019000a3f703db92829ecbd646501c0fd6a5e97ad6774d4ad621f949",
-		}
-
 		MainChainCoord := common.NewCoordinate(0, 0)
 
-		sk0 := "13db949719b42eac09a8d7eeb7d9d259d595657f810c50aeb249250483652f98"
-		pHash0 := "2xASBuEWw6LcQGjYxeGZH9w1DUsEDt7fvUh8p3auxyN"
-		kn0Addr := common.NewAddress(common.NewCoordinate(0, 1), MainChainCoord, 0)
-
-		accountSk := "5e0dc680d12a728f60a708dcdbfb8d2c2aaea3ee5748d12bd9358f1015e3d18b"
-		// accountPHash := "3An3VbzXozCehPiWYTCmngK6NQxokSruhgUUXurEgWa"
-		accountAddr := common.NewAddress(common.NewCoordinate(0, 2), MainChainCoord, 0)
-		var accountSigner *key.MemoryKey
-		{
-			data0, err := hex.DecodeString(accountSk)
-			if err != nil {
-				panic(err)
-			}
-			accountSigner, err = key.NewMemoryKeyFromBytes(data0)
-			if err != nil {
-				panic(err)
-			}
+		obsk := make([]string, len(ADDR.MainObserver))
+		obHash := make([]string, len(ADDR.MainObserver))
+		for i, k := range ADDR.MainObserver {
+			obsk[i] = k.SK
+			obHash[i] = k.Hash
 		}
 
-		sk1 := "ef475a14258d0a6f061293628e299a78e6abd7d46f0eb544c473045c84dffa31"
-		pHash1 := "Qdd6uH7cz4GJmgNAAXPZwSFDRd2CLhSh5c6x24z3eS"
-		kn1Addr := common.MustParseAddress("5QxWJopN3")
-
-		PublicHashs := []string{
-			pHash0,
-		}
-
-		ObConfig := GetConfig("observer_0", SeedNodes, "", MainChainCoord, "observer_0", ObserverPhashs)
-		obKernel := CreateKernel("observer_0", ObConfig, PublicHashs)
-		ob, err := NewObserver(&ObConfig.Observer, obKernel, obSks)
+		ObConfig := GetConfig("observer_0", SeedNodes, "", MainChainCoord, "observer_0", obHash)
+		obKernel := CreateKernel("observer_0", ObConfig)
+		ob, err := NewObserver(&ObConfig.Observer, obKernel, obsk)
 		if err != nil {
 			panic(err)
 		}
 		go ob.Start()
 
-		FmConfig0 := GetConfig("formulator_0", SeedNodes, kn0Addr.String(), MainChainCoord, "observer_0", ObserverPhashs)
-		kn0 := CreateKernel("formulator_0", FmConfig0, PublicHashs)
-		SetupFormulator(kn0, sk0)
-		FmConfig1 := GetConfig("formulator_1", SeedNodes, kn1Addr.String(), MainChainCoord, "", ObserverPhashs)
-		kn1 := CreateKernel("formulator_1", FmConfig1, PublicHashs)
-		SetupFormulator(kn1, sk1)
+		FmConfig0 := GetConfig("formulator_0", SeedNodes, ADDR.MainFormulator[0].Addr.String(), MainChainCoord, "observer_0", obHash)
+		kn0 := CreateKernel("formulator_0", FmConfig0)
+		SetupFormulator(kn0, ADDR.MainFormulator[0].SK)
 
 		kn0.Start()
-		kn1.Start()
 
 		kn0.PeerManager.EnforceConnect()
-		kn1.PeerManager.EnforceConnect()
 
 		time.Sleep(time.Second)
 
 		go kn0.TryGenerateBlock()
 
 		dapp := &DApp{
-			secureKey:  "f0507dc42f6ce962c85bc23770f39b33d0a89033b4e4bf7f075bde9b67605972",
-			DAppRouter: kn1.Router,
+			DAppRouter: kn0.Router,
+			MainKn:     kn0,
 		}
 
 		kn0.AddEventHandler(&DappStarterEventHandler{
-			kn:   kn0,
 			DApp: dapp,
 			TokenCreationInformation: token_tx.TokenCreationInformation{
 				ObserverInfos: []token_tx.ObserverInfo{
-					{Hash: "bqanMFRvFDywQgy6bgSeduG8qfhPTG7p54k55rnknL", URL: "opserver_0"},
-					{Hash: "3An3VbzXozCehPiWYTCmngK6NQxokSruhgUUXurEgWa", URL: "opserver_1"},
-					{Hash: "48EQBqbezsxM35rvSt44ECgZYsSENJ3qDgNmGsrmqNs", URL: "opserver_2"},
-					{Hash: "27ZEfGy339mPF8coWxRrFa64bspwj2Ymf6U9hK8iuff", URL: "opserver_3"},
-					{Hash: "2Yy3PMi1Hkk5hNxUhJfV8tMoudvGmtdfTnEHY7fg5Pb", URL: "opserver_4"},
+					{Hash: ADDR.DAppObserver[0].Hash, URL: "opserver_0"},
+					{Hash: ADDR.DAppObserver[1].Hash, URL: "opserver_1"},
+					{Hash: ADDR.DAppObserver[2].Hash, URL: "opserver_2"},
+					{Hash: ADDR.DAppObserver[3].Hash, URL: "opserver_3"},
+					{Hash: ADDR.DAppObserver[4].Hash, URL: "opserver_4"},
 				},
 			},
-			accountAddr:   accountAddr,
-			accountSigner: accountSigner,
-			pHash:         pHash1,
+			accountAddr:     ADDR.MainAccount.Addr,
+			accountSigner:   ADDR.MainAccount.Signer,
+			TokenPublicHash: ADDR.MainToken.Hash,
 		})
 
 		time.Sleep(time.Millisecond * 300)
@@ -225,11 +216,11 @@ func Test_JStest(t *testing.T) {
 				panic(err)
 			}
 			t := cc.(*token_tx.TokenCreation)
-			t.From_ = accountAddr
-			t.KeyHash = common.MustParsePublicHash(pHash1)
-			t.Seq_ = kn0.Loader().Seq(accountAddr) + 1
+			t.From_ = ADDR.MainAccount.Addr
+			t.TokenPublicHash = common.MustParsePublicHash(ADDR.MainToken.Hash)
+			t.Seq_ = kn0.Loader().Seq(ADDR.MainAccount.Addr) + 1
 
-			sig0, _ := accountSigner.Sign(t.Hash())
+			sig0, _ := ADDR.MainAccount.Signer.Sign(t.Hash())
 			sigs0 := []common.Signature{sig0}
 
 			kn0.AddTransaction(t, sigs0)
@@ -238,7 +229,6 @@ func Test_JStest(t *testing.T) {
 
 		select {}
 	})
-
 }
 
 func initMainChainComponent(act *data.Accounter, tran *data.Transactor) error {
@@ -258,6 +248,7 @@ func initMainChainComponent(act *data.Accounter, tran *data.Transactor) error {
 		TokenCreationTransctionType       = transaction.Type(50)
 		ChainInitializationTransctionType = transaction.Type(51)
 		TokenIssueTransctionType          = transaction.Type(52)
+		EngraveDappTransctionType         = transaction.Type(53)
 		// Formulation Transactions
 		CreateFormulationTransctionType = transaction.Type(60)
 		RevokeFormulationTransctionType = transaction.Type(61)
@@ -291,6 +282,7 @@ func initMainChainComponent(act *data.Accounter, tran *data.Transactor) error {
 		"fleta.TokenCreation":         &txFee{TokenCreationTransctionType, amount.COIN.MulC(10)},
 		"fleta.ChainInitialization":   &txFee{ChainInitializationTransctionType, amount.COIN.MulC(10)},
 		"fleta.TokenIssue":            &txFee{TokenIssueTransctionType, amount.COIN.MulC(10)},
+		"fleta.EngraveDapp":           &txFee{EngraveDappTransctionType, amount.COIN.MulC(10)},
 		"consensus.CreateFormulation": &txFee{CreateFormulationTransctionType, amount.COIN.MulC(50000)},
 		"consensus.RevokeFormulation": &txFee{RevokeFormulationTransctionType, amount.COIN.DivC(10)},
 	}
@@ -317,14 +309,14 @@ func initMainChainComponent(act *data.Accounter, tran *data.Transactor) error {
 	return nil
 }
 
-func initMainGenesisContextData(st *store.Store, ctd *data.ContextData, PublicHashs []string) error {
-	acg := &accMainCoordGenerator{idx: 1}
-	for _, PublicHash := range PublicHashs {
-		AddFormulator(st, ctd, common.MustParsePublicHash(PublicHash), common.NewAddress(acg.Generate(), st.ChainCoord(), 0))
+func initMainGenesisContextData(st *store.Store, ctd *data.ContextData) error {
+	for i, k := range ADDR.MainFormulator {
+		PublicHash := k.Hash
+		addr := ADDR.MainFormulator[i].Addr
+		AddFormulator(st, ctd, common.MustParsePublicHash(PublicHash), addr)
 	}
-	// 5e0dc680d12a728f60a708dcdbfb8d2c2aaea3ee5748d12bd9358f1015e3d18b : 3An3VbzXozCehPiWYTCmngK6NQxokSruhgUUXurEgWa
-	addSingleAccount(st, ctd, common.MustParsePublicHash("3An3VbzXozCehPiWYTCmngK6NQxokSruhgUUXurEgWa"), common.NewAddress(acg.Generate(), st.ChainCoord(), 0))
-	// addFormulator(st, ctd, common.MustParsePublicHash("2VdGunZe8yZNm2mErqQqrFx2B7Mb4SBRPWviWnapahw"), common.NewAddress(acg.Generate(), st.ChainCoord(), 0))
+
+	addSingleAccount(st, ctd, common.MustParsePublicHash(ADDR.MainAccount.Hash), ADDR.MainAccount.Addr)
 	return nil
 }
 
@@ -340,16 +332,6 @@ func addSingleAccount(st *store.Store, ctd *data.ContextData, KeyHash common.Pub
 	balance := account.NewBalance()
 	balance.AddBalance(st.ChainCoord(), amount.NewCoinAmount(10000000000, 0))
 	ctd.AccountBalanceHash[acc.Address_] = balance
-}
-
-type accMainCoordGenerator struct {
-	idx uint16
-}
-
-func (acg *accMainCoordGenerator) Generate() *common.Coordinate {
-	coord := common.NewCoordinate(0, acg.idx)
-	acg.idx++
-	return coord
 }
 
 func GetConfig(ID string, SeedNodes []string, Generator string, ChainCoord *common.Coordinate, obID string, ObserverSignatures []string) *kernel.Config {
@@ -388,7 +370,7 @@ func GetConfig(ID string, SeedNodes []string, Generator string, ChainCoord *comm
 	return Config
 }
 
-func CreateKernel(ID string, Config *kernel.Config, PublicHashs []string) *kernel.Kernel {
+func CreateKernel(ID string, Config *kernel.Config) *kernel.Kernel {
 	os.RemoveAll("./_data/" + ID)
 	act := data.NewAccounter(Config.ChainCoord)
 	tran := data.NewTransactor(Config.ChainCoord)
@@ -403,7 +385,7 @@ func CreateKernel(ID string, Config *kernel.Config, PublicHashs []string) *kerne
 
 	GenesisContextData := data.NewContextData(data.NewEmptyLoader(st.ChainCoord(), st.Accounter(), st.Transactor()), nil)
 
-	if err := initMainGenesisContextData(st, GenesisContextData, PublicHashs); err != nil {
+	if err := initMainGenesisContextData(st, GenesisContextData); err != nil {
 		panic(err)
 	}
 	rewarder := &Rewarder{}

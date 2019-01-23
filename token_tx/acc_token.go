@@ -32,7 +32,7 @@ func init() {
 // It is used as a basic account
 type TokenAccount struct {
 	account.Base
-	TokenCoord *common.Coordinate
+	TokenCoord common.Coordinate
 	KeyHash    common.PublicHash
 }
 
@@ -43,7 +43,8 @@ func (acc *TokenAccount) Clone() account.Account {
 			Address_: acc.Address_,
 			Type_:    acc.Type_,
 		},
-		KeyHash: acc.KeyHash.Clone(),
+		TokenCoord: *acc.TokenCoord.Clone(),
+		KeyHash:    acc.KeyHash.Clone(),
 	}
 }
 

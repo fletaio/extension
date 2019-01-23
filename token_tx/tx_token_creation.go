@@ -76,9 +76,12 @@ func init() {
 		acc := a.(*TokenAccount)
 		acc.Address_ = addr
 		log.Println("fleta.TokenAccount ", addr.String())
-		acc.TokenCoord = coord.Clone()
-		acc.KeyHash = tx.KeyHash
-		ctx.CreateAccount(acc)
+		acc.TokenCoord = *coord.Clone()
+		acc.KeyHash = tx.TokenPublicHash
+		err = ctx.CreateAccount(acc)
+		if err != nil {
+			return nil, err
+		}
 
 		ctx.Commit(sn)
 		return nil, nil
@@ -89,7 +92,7 @@ func init() {
 // It is used to make a single account
 type TokenCreation struct {
 	account_tx.Base
-	KeyHash common.PublicHash
+	TokenPublicHash common.PublicHash
 }
 
 // Hash returns the hash value of it
@@ -109,7 +112,7 @@ func (tx *TokenCreation) WriteTo(w io.Writer) (int64, error) {
 	} else {
 		wrote += n
 	}
-	if n, err := tx.KeyHash.WriteTo(w); err != nil {
+	if n, err := tx.TokenPublicHash.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -125,7 +128,7 @@ func (tx *TokenCreation) ReadFrom(r io.Reader) (int64, error) {
 	} else {
 		read += n
 	}
-	if n, err := tx.KeyHash.ReadFrom(r); err != nil {
+	if n, err := tx.TokenPublicHash.ReadFrom(r); err != nil {
 		return read, err
 	} else {
 		read += n

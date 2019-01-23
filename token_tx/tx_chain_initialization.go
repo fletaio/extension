@@ -77,7 +77,7 @@ func init() {
 		acc := a.(*TokenAccount)
 		acc.Address_ = addr
 		log.Println("fleta.TokenAccount ", addr.String())
-		acc.TokenCoord = coord.Clone()
+		acc.TokenCoord = *coord.Clone()
 		ctx.CreateAccount(acc)
 
 		ctx.Commit(sn)

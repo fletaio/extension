@@ -1,4 +1,4 @@
-package dapp_chain
+package dappChainTest
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"git.fleta.io/fleta/core/account"
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/util"
@@ -99,8 +101,8 @@ func NewObserver(Config *observer.Config, kn *kernel.Kernel, strs []string) (*Ob
 		Keys:   keys,
 		conns:  make([]net.Conn, 0),
 	}
-	mm.ApplyMessage(message_def.BlockGenMessageType, ob.BlockGenMessageCreator, ob.RecvMessageHandler)
-	mm.ApplyMessage(message_def.BlockObSignMessageType, ob.BlockObSignMessageCreator, ob.RecvMessageHandler)
+	mm.ApplyMessage(message_def.BlockGenMessageType, ob.BlockMessageCreator, ob.RecvMessageHandler)
+	mm.ApplyMessage(message_def.BlockObSignMessageType, ob.BlockMessageCreator, ob.RecvMessageHandler)
 	return ob, nil
 }
 
@@ -145,18 +147,26 @@ func (ob *Observer) Start() {
 	}()
 }
 
-//BlockGenMessageCreator TODO
-func (ob *Observer) BlockGenMessageCreator(r io.Reader) message.Message {
-	p := message_def.NewBlockGenMessage(ob.kn.Loader().Transactor())
-	p.ReadFrom(r)
-	return p
-}
-
-//BlockObSignMessageCreator TODO
-func (ob *Observer) BlockObSignMessageCreator(r io.Reader) message.Message {
-	p := message_def.NewBlockObSignMessage()
-	p.ReadFrom(r)
-	return p
+//BlockMessageCreator TODO
+func (ob *Observer) BlockMessageCreator(r io.Reader, mt message.Type) (message.Message, error) {
+	switch mt {
+	case message_def.BlockGenMessageType:
+		p := message_def.NewBlockGenMessage(ob.kn.Loader().Transactor())
+		_, err := p.ReadFrom(r)
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	case message_def.BlockObSignMessageType:
+		p := message_def.NewBlockObSignMessage()
+		_, err := p.ReadFrom(r)
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	default:
+		return nil, message.ErrUnknownMessage
+	}
 }
 
 var gSpandsLock sync.Mutex
@@ -173,27 +183,33 @@ func (ob *Observer) RecvMessageHandler(m message.Message) error {
 		} else if !is {
 			return ErrInvalidTopFormulator
 		}
-		if pubkey, err := common.RecoverPubkey(msg.Block.Header.Hash(), msg.Signed.GeneratorSignature); err != nil {
-			return err
-		} else {
-			if acc, err := loader.Account(msg.Block.Header.FormulationAddress); err != nil {
+
+		var pubkey common.PublicKey
+		var acc account.Account
+		{
+			var err error
+			pubkey, err = common.RecoverPubkey(msg.Block.Header.Hash(), msg.Signed.GeneratorSignature)
+			if err != nil {
 				return err
-			} else {
-				if err := loader.Accounter().Validate(loader, acc, []common.PublicHash{common.NewPublicHash(pubkey)}); err != nil {
-					return err
-				}
 			}
+			acc, err = loader.Account(msg.Block.Header.FormulationAddress)
+			if err != nil {
+				return err
+			}
+		}
+		if err := loader.Accounter().Validate(loader, acc, []common.PublicHash{common.NewPublicHash(pubkey)}); err != nil {
+			return err
 		}
 
 		BlockHash := msg.Block.Header.Hash()
 		sigs := []common.Signature{}
 		ls := rand.Perm(len(ob.Keys))
 		for i := 0; i < len(ob.Keys)/2+1; i++ {
-			if sig, err := ob.Keys[ls[i]].Sign(BlockHash); err != nil {
+			sig, err := ob.Keys[ls[i]].Sign(BlockHash)
+			if err != nil {
 				return nil
-			} else {
-				sigs = append(sigs, sig)
 			}
+			sigs = append(sigs, sig)
 		}
 		// TODO : sign by consensus
 
@@ -323,7 +339,8 @@ func GetDAppConfig(ID string, SeedNodes []string, Generator string, ChainCoord *
 	return Config
 }
 
-func CreateDAppKernel(ID string, r router.Router, Config *kernel.Config, PublicHashs []string) *kernel.Kernel {
+//CreateDAppKernel
+func CreateDAppKernel(ID string, r router.Router, Config *kernel.Config) *kernel.Kernel {
 	act := data.NewAccounter(Config.ChainCoord)
 	tran := data.NewTransactor(Config.ChainCoord)
 	if err := initDAppChainComponent(act, tran); err != nil {
@@ -337,7 +354,7 @@ func CreateDAppKernel(ID string, r router.Router, Config *kernel.Config, PublicH
 
 	GenesisContextData := data.NewContextData(data.NewEmptyLoader(st.ChainCoord(), st.Accounter(), st.Transactor()), nil)
 
-	if err := initDAppGenesisContextData(st, GenesisContextData, PublicHashs); err != nil {
+	if err := initDAppGenesisContextData(st, GenesisContextData); err != nil {
 		panic(err)
 	}
 	rewarder := &Rewarder{}
@@ -350,9 +367,9 @@ func CreateDAppKernel(ID string, r router.Router, Config *kernel.Config, PublicH
 	return kn
 }
 
-func SetupFormulator(kn *kernel.Kernel, KeyHex string) *kernel.Kernel {
+func SetupFormulator(kn *kernel.Kernel, sk string) *kernel.Kernel {
 	RequestTimeout := 5 //seconds
-	data, err := hex.DecodeString(KeyHex)
+	data, err := hex.DecodeString(sk)
 	if err != nil {
 		panic(err)
 	}

@@ -57,13 +57,10 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		if err := fromBalance.SubBalance(chainCoord, Fee); err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(chainCoord, tx.Amount); err != nil {
-			return nil, err
-		}
-
 		if err := fromBalance.SubBalance(chainCoord, tx.Amount); err != nil {
 			return nil, err
 		}
