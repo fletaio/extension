@@ -1,7 +1,6 @@
 package account_tx
 
 import (
-	"bytes"
 	"io"
 
 	"git.fleta.io/fleta/core/amount"
@@ -102,11 +101,7 @@ type CreateMultiSigAccount struct {
 
 // Hash returns the hash value of it
 func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
-	var buffer bytes.Buffer
-	if _, err := tx.WriteTo(&buffer); err != nil {
-		panic(err)
-	}
-	return hash.DoubleHash(buffer.Bytes())
+	return hash.DoubleHashByWriterTo(tx)
 }
 
 // WriteTo is a serialization function

@@ -21,13 +21,13 @@ func init() {
 		if len(signers) <= 1 || len(signers) >= 255 {
 			return ErrInvalidSignerCount
 		}
-		signerHash := map[common.PublicHash]bool{}
+		signerMap := map[common.PublicHash]bool{}
 		for _, signer := range signers {
-			signerHash[signer] = true
+			signerMap[signer] = true
 		}
 		matchCount := 0
 		for _, addr := range acc.KeyHashes {
-			if signerHash[addr] {
+			if signerMap[addr] {
 				matchCount++
 			}
 		}

@@ -1,7 +1,6 @@
 package token_tx
 
 import (
-	"bytes"
 	"io"
 	"log"
 
@@ -79,11 +78,7 @@ type EngraveDapp struct {
 
 // Hash returns the hash value of it
 func (tx *EngraveDapp) Hash() hash.Hash256 {
-	var buffer bytes.Buffer
-	if _, err := tx.WriteTo(&buffer); err != nil {
-		panic(err)
-	}
-	return hash.DoubleHash(buffer.Bytes())
+	return hash.DoubleHashByWriterTo(tx)
 }
 
 // WriteTo is a serialization function
