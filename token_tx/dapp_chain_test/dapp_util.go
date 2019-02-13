@@ -178,7 +178,7 @@ func (ob *Observer) RecvMessageHandler(m message.Message) error {
 	case *message_def.BlockGenMessage:
 		loader := ob.kn.Loader()
 		provider := ob.kn.Provider()
-		if is, err := ob.kn.IsMinable(msg.Block.Header.FormulationAddress, msg.Block.Header.TimeoutCount); err != nil {
+		if is, err := ob.kn.IsMinable(msg.Block.Header.Formulator, msg.Block.Header.TimeoutCount); err != nil {
 			return err
 		} else if !is {
 			return ErrInvalidTopFormulator
@@ -192,7 +192,7 @@ func (ob *Observer) RecvMessageHandler(m message.Message) error {
 			if err != nil {
 				return err
 			}
-			acc, err = loader.Account(msg.Block.Header.FormulationAddress)
+			acc, err = loader.Account(msg.Block.Header.Formulator)
 			if err != nil {
 				return err
 			}
@@ -398,8 +398,8 @@ func SetupFormulator(kn *kernel.Kernel, sk string) *kernel.Kernel {
 type Rewarder struct {
 }
 
-func (rd *Rewarder) ProcessReward(FormulationAddress common.Address, ctx *data.Context) error {
-	balance, err := ctx.AccountBalance(FormulationAddress)
+func (rd *Rewarder) ProcessReward(Formulator common.Address, ctx *data.Context) error {
+	balance, err := ctx.AccountBalance(Formulator)
 	if err != nil {
 		return err
 	}
