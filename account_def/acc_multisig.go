@@ -1,6 +1,8 @@
 package account_def
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 
 	"git.fleta.io/fleta/common"
@@ -120,4 +122,46 @@ func (acc *MultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 		}
 	}
 	return read, nil
+}
+
+// MarshalJSON is a marshaler function
+func (acc *MultiSigAccount) MarshalJSON() ([]byte, error) {
+	var buffer bytes.Buffer
+	buffer.WriteString(`{`)
+	buffer.WriteString(`"address":`)
+	if bs, err := acc.Address_.MarshalJSON(); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"type":`)
+	if bs, err := json.Marshal(acc.Type_); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"required":`)
+	if bs, err := json.Marshal(acc.Required); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"key_hashes":`)
+	buffer.WriteString(`[`)
+	for i, pubhash := range acc.KeyHashes {
+		if i > 0 {
+			buffer.WriteString(`,`)
+		}
+		if bs, err := pubhash.MarshalJSON(); err != nil {
+			return nil, err
+		} else {
+			buffer.Write(bs)
+		}
+	}
+	buffer.WriteString(`]`)
+	buffer.WriteString(`}`)
+	return buffer.Bytes(), nil
 }

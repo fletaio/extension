@@ -1,6 +1,8 @@
 package utxo_tx
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 
 	"git.fleta.io/fleta/core/amount"
@@ -143,4 +145,60 @@ func (tx *Assign) ReadFrom(r io.Reader) (int64, error) {
 		}
 	}
 	return read, nil
+}
+
+// MarshalJSON is a marshaler function
+func (tx *Assign) MarshalJSON() ([]byte, error) {
+	var buffer bytes.Buffer
+	buffer.WriteString(`{`)
+	buffer.WriteString(`"chain_coord":`)
+	if bs, err := tx.ChainCoord_.MarshalJSON(); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"timestamp":`)
+	if bs, err := json.Marshal(tx.Timestamp_); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"type":`)
+	if bs, err := json.Marshal(tx.Type_); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"vin":`)
+	buffer.WriteString(`[`)
+	for i, vin := range tx.Vin {
+		if i > 0 {
+			buffer.WriteString(`,`)
+		}
+		if bs, err := json.Marshal(vin.ID()); err != nil {
+			return nil, err
+		} else {
+			buffer.Write(bs)
+		}
+	}
+	buffer.WriteString(`]`)
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"vout":`)
+	buffer.WriteString(`[`)
+	for i, vout := range tx.Vout {
+		if i > 0 {
+			buffer.WriteString(`,`)
+		}
+		if bs, err := vout.MarshalJSON(); err != nil {
+			return nil, err
+		} else {
+			buffer.Write(bs)
+		}
+	}
+	buffer.WriteString(`]`)
+	buffer.WriteString(`}`)
+	return buffer.Bytes(), nil
 }
