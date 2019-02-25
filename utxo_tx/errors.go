@@ -14,4 +14,6 @@ var (
 	ErrNotMainChain                = errors.New("not main chain")
 	ErrDustAmount                  = errors.New("dust amount")
 	ErrExistAddress                = errors.New("exist address")
+	ErrExistAccountName            = errors.New("exist account name")
+	ErrInvalidAccountName          = errors.New("invalid account name")
 )

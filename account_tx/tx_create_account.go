@@ -10,6 +10,7 @@ import (
 
 	"git.fleta.io/fleta/common"
 	"git.fleta.io/fleta/common/hash"
+	"git.fleta.io/fleta/common/util"
 	"git.fleta.io/fleta/core/data"
 	"git.fleta.io/fleta/core/transaction"
 )
@@ -29,6 +30,10 @@ func init() {
 		if !transaction.IsMainChain(loader.ChainCoord()) {
 			return ErrNotMainChain
 		}
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return ErrInvalidAccountName
+		}
+
 		if tx.Seq() <= loader.Seq(tx.From()) {
 			return ErrInvalidSequence
 		}
@@ -38,12 +43,22 @@ func init() {
 			return err
 		}
 
+		if is, err := loader.IsExistAccountName(tx.Name); err != nil {
+			return err
+		} else if is {
+			return ErrExistAccountName
+		}
+
 		if err := loader.Accounter().Validate(loader, fromAcc, signers); err != nil {
 			return err
 		}
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*CreateAccount)
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return nil, ErrInvalidAccountName
+		}
+
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
 
@@ -66,6 +81,10 @@ func init() {
 			return nil, err
 		} else if is {
 			return nil, ErrExistAddress
+		} else if isn, err := ctx.IsExistAccountName(tx.Name); err != nil {
+			return nil, err
+		} else if isn {
+			return nil, ErrExistAccountName
 		} else {
 			a, err := ctx.Accounter().NewByTypeName("fleta.SingleAccount")
 			if err != nil {
@@ -73,6 +92,7 @@ func init() {
 			}
 			acc := a.(*account_def.SingleAccount)
 			acc.Address_ = addr
+			acc.Name_ = tx.Name
 			acc.KeyHash = tx.KeyHash
 			ctx.CreateAccount(acc)
 		}
@@ -85,6 +105,7 @@ func init() {
 // It is used to make a single account
 type CreateAccount struct {
 	Base
+	Name    string
 	KeyHash common.PublicHash
 }
 
@@ -97,6 +118,11 @@ func (tx *CreateAccount) Hash() hash.Hash256 {
 func (tx *CreateAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := util.WriteString(w, tx.Name); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -116,6 +142,12 @@ func (tx *CreateAccount) ReadFrom(r io.Reader) (int64, error) {
 		return read, err
 	} else {
 		read += n
+	}
+	if v, n, err := util.ReadString(r); err != nil {
+		return read, err
+	} else {
+		read += n
+		tx.Name = v
 	}
 	if n, err := tx.KeyHash.ReadFrom(r); err != nil {
 		return read, err
@@ -159,6 +191,13 @@ func (tx *CreateAccount) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"from":`)
 	if bs, err := tx.From_.MarshalJSON(); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"name":`)
+	if bs, err := json.Marshal(tx.Name); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)

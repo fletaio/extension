@@ -30,6 +30,24 @@ func init() {
 		if !transaction.IsMainChain(loader.ChainCoord()) {
 			return ErrNotMainChain
 		}
+
+		if len(tx.KeyHashes) <= 1 {
+			return ErrInvalidMultiSigKeyHashCount
+		}
+		keyHashMap := map[common.PublicHash]bool{}
+		for _, v := range tx.KeyHashes {
+			keyHashMap[v] = true
+		}
+		if len(keyHashMap) != len(tx.KeyHashes) {
+			return ErrInvalidMultiSigKeyHashCount
+		}
+		if len(tx.KeyHashes) > 10 {
+			return ErrInvalidMultiSigKeyHashCount
+		}
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return ErrInvalidAccountName
+		}
+
 		if tx.Seq() <= loader.Seq(tx.From()) {
 			return ErrInvalidSequence
 		}
@@ -56,6 +74,12 @@ func init() {
 		if len(keyHashMap) != len(tx.KeyHashes) {
 			return nil, ErrInvalidMultiSigKeyHashCount
 		}
+		if len(tx.KeyHashes) > 10 {
+			return nil, ErrInvalidMultiSigKeyHashCount
+		}
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return nil, ErrInvalidAccountName
+		}
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
@@ -79,6 +103,10 @@ func init() {
 			return nil, err
 		} else if is {
 			return nil, ErrExistAddress
+		} else if isn, err := ctx.IsExistAccountName(tx.Name); err != nil {
+			return nil, err
+		} else if isn {
+			return nil, ErrExistAccountName
 		} else {
 			a, err := ctx.Accounter().NewByTypeName("fleta.MultiSigAccount")
 			if err != nil {
@@ -98,6 +126,7 @@ func init() {
 // It is used to make multi-sig account
 type CreateMultiSigAccount struct {
 	Base
+	Name      string
 	KeyHashes []common.PublicHash
 }
 
@@ -110,6 +139,11 @@ func (tx *CreateMultiSigAccount) Hash() hash.Hash256 {
 func (tx *CreateMultiSigAccount) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := util.WriteString(w, tx.Name); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -136,6 +170,12 @@ func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 		return read, err
 	} else {
 		read += n
+	}
+	if v, n, err := util.ReadString(r); err != nil {
+		return read, err
+	} else {
+		read += n
+		tx.Name = v
 	}
 	if Len, n, err := util.ReadUint8(r); err != nil {
 		return read, err
@@ -189,6 +229,13 @@ func (tx *CreateMultiSigAccount) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"from":`)
 	if bs, err := tx.From_.MarshalJSON(); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"name":`)
+	if bs, err := json.Marshal(tx.Name); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)

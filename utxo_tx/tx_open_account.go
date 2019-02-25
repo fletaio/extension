@@ -35,6 +35,9 @@ func init() {
 		if len(signers) > 1 {
 			return ErrInvalidSignerCount
 		}
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return ErrInvalidAccountName
+		}
 
 		for _, vin := range tx.Vin {
 			if utxo, err := loader.UTXO(vin.ID()); err != nil {
@@ -54,6 +57,9 @@ func init() {
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*OpenAccount)
+		if len(tx.Name) < 8 || len(tx.Name) > 16 {
+			return nil, ErrInvalidAccountName
+		}
 
 		sn := ctx.Snapshot()
 		defer ctx.Revert(sn)
@@ -88,6 +94,10 @@ func init() {
 			return nil, err
 		} else if is {
 			return nil, ErrExistAddress
+		} else if isn, err := ctx.IsExistAccountName(tx.Name); err != nil {
+			return nil, err
+		} else if isn {
+			return nil, ErrExistAccountName
 		} else {
 			a, err := ctx.Accounter().NewByTypeName("fleta.SingleAccount")
 			if err != nil {
@@ -95,6 +105,7 @@ func init() {
 			}
 			acc := a.(*account_def.SingleAccount)
 			acc.Address_ = addr
+			acc.Name_ = tx.Name
 			acc.KeyHash = tx.KeyHash
 			ctx.CreateAccount(acc)
 		}
@@ -108,6 +119,7 @@ func init() {
 type OpenAccount struct {
 	Base
 	Vout    []*transaction.TxOut
+	Name    string
 	KeyHash common.PublicHash
 }
 
@@ -135,6 +147,11 @@ func (tx *OpenAccount) WriteTo(w io.Writer) (int64, error) {
 				wrote += n
 			}
 		}
+	}
+	if n, err := util.WriteString(w, tx.Name); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
 	}
 	if n, err := tx.KeyHash.WriteTo(w); err != nil {
 		return wrote, err
@@ -166,6 +183,12 @@ func (tx *OpenAccount) ReadFrom(r io.Reader) (int64, error) {
 				tx.Vout = append(tx.Vout, vout)
 			}
 		}
+	}
+	if v, n, err := util.ReadString(r); err != nil {
+		return read, err
+	} else {
+		read += n
+		tx.Name = v
 	}
 	if n, err := tx.KeyHash.ReadFrom(r); err != nil {
 		return read, err
@@ -227,6 +250,13 @@ func (tx *OpenAccount) MarshalJSON() ([]byte, error) {
 		}
 	}
 	buffer.WriteString(`]`)
+	buffer.WriteString(`,`)
+	buffer.WriteString(`"name":`)
+	if bs, err := json.Marshal(tx.Name); err != nil {
+		return nil, err
+	} else {
+		buffer.Write(bs)
+	}
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"key_hash":`)
 	if bs, err := tx.KeyHash.MarshalJSON(); err != nil {
