@@ -58,8 +58,9 @@ func (acc *MultiSigAccount) Clone() account.Account {
 	}
 	return &MultiSigAccount{
 		Base: account.Base{
-			Address_: acc.Address_,
 			Type_:    acc.Type_,
+			Address_: acc.Address_,
+			Balance_: acc.Balance(),
 		},
 		Required:  acc.Required,
 		KeyHashes: keyHashes,

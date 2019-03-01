@@ -40,8 +40,9 @@ type TokenAccount struct {
 func (acc *TokenAccount) Clone() account.Account {
 	return &TokenAccount{
 		Base: account.Base{
-			Address_: acc.Address_,
 			Type_:    acc.Type_,
+			Address_: acc.Address_,
+			Balance_: acc.Balance(),
 		},
 		TokenCoord: *acc.TokenCoord.Clone(),
 		KeyHash:    acc.KeyHash.Clone(),

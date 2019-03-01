@@ -48,8 +48,9 @@ type LockedAccount struct {
 func (acc *LockedAccount) Clone() account.Account {
 	return &LockedAccount{
 		Base: account.Base{
-			Address_: acc.Address_,
 			Type_:    acc.Type_,
+			Address_: acc.Address_,
+			Balance_: acc.Balance(),
 		},
 		KeyHash: acc.KeyHash.Clone(),
 	}

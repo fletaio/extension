@@ -43,8 +43,9 @@ type SingleAccount struct {
 func (acc *SingleAccount) Clone() account.Account {
 	return &SingleAccount{
 		Base: account.Base{
-			Address_: acc.Address_,
 			Type_:    acc.Type_,
+			Address_: acc.Address_,
+			Balance_: acc.Balance(),
 		},
 		KeyHash: acc.KeyHash.Clone(),
 	}
