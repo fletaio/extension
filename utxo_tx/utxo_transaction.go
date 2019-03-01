@@ -18,6 +18,15 @@ func (tx *Base) IsUTXO() bool {
 	return true
 }
 
+// VinIDs returns ids of the vin
+func (tx *Base) VinIDs() []uint64 {
+	vins := make([]uint64, 0, len(tx.Vin))
+	for _, vin := range tx.Vin {
+		vins = append(vins, vin.ID())
+	}
+	return vins
+}
+
 // WriteTo is a serialization function
 func (tx *Base) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64

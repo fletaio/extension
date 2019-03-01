@@ -15,16 +15,14 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.Burn", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.Burn", func(t transaction.Type) transaction.Transaction {
 		return &Burn{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: coord,
-					Type_:       t,
+					Type_: t,
 				},
 			},
-			TokenCoord: coord.Clone(),
-			Amount:     amount.NewCoinAmount(0, 0),
+			Amount: amount.NewCoinAmount(0, 0),
 		}
 	}, func(loader data.Loader, t transaction.Transaction, signers []common.PublicHash) error {
 		tx := t.(*Burn)
@@ -54,14 +52,14 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
-		fromBalance, err := ctx.AccountBalance(tx.From())
+		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(tx.TokenCoord, Fee); err != nil {
+		if err := fromAcc.SubBalance(Fee); err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(tx.TokenCoord, tx.Amount); err != nil {
+		if err := fromAcc.SubBalance(tx.Amount); err != nil {
 			return nil, err
 		}
 		ctx.Commit(sn)
@@ -73,8 +71,7 @@ func init() {
 // It is used to burn coin from the account
 type Burn struct {
 	Base
-	TokenCoord *common.Coordinate
-	Amount     *amount.Amount
+	Amount *amount.Amount
 }
 
 // Hash returns the hash value of it
@@ -96,11 +93,6 @@ func (tx *Burn) WriteTo(w io.Writer) (int64, error) {
 		wrote += n
 	}
 	if n, err := tx.From_.WriteTo(w); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := tx.TokenCoord.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -132,11 +124,6 @@ func (tx *Burn) ReadFrom(r io.Reader) (int64, error) {
 	} else {
 		read += n
 	}
-	if n, err := tx.TokenCoord.ReadFrom(r); err != nil {
-		return read, err
-	} else {
-		read += n
-	}
 	if n, err := tx.Amount.ReadFrom(r); err != nil {
 		return read, err
 	} else {
@@ -149,8 +136,8 @@ func (tx *Burn) ReadFrom(r io.Reader) (int64, error) {
 func (tx *Burn) MarshalJSON() ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString(`{`)
-	buffer.WriteString(`"chain_coord":`)
-	if bs, err := tx.ChainCoord_.MarshalJSON(); err != nil {
+	buffer.WriteString(`"type":`)
+	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)
@@ -158,13 +145,6 @@ func (tx *Burn) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"timestamp":`)
 	if bs, err := json.Marshal(tx.Timestamp_); err != nil {
-		return nil, err
-	} else {
-		buffer.Write(bs)
-	}
-	buffer.WriteString(`,`)
-	buffer.WriteString(`"type":`)
-	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)
@@ -179,13 +159,6 @@ func (tx *Burn) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"from":`)
 	if bs, err := tx.From_.MarshalJSON(); err != nil {
-		return nil, err
-	} else {
-		buffer.Write(bs)
-	}
-	buffer.WriteString(`,`)
-	buffer.WriteString(`"token_coord":`)
-	if bs, err := tx.TokenCoord.MarshalJSON(); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)

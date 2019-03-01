@@ -16,12 +16,11 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.CreateMultiSigAccount", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.CreateMultiSigAccount", func(t transaction.Type) transaction.Transaction {
 		return &CreateMultiSigAccount{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: coord,
-					Type_:       t,
+					Type_: t,
 				},
 			},
 		}
@@ -30,7 +29,6 @@ func init() {
 		if !transaction.IsMainChain(loader.ChainCoord()) {
 			return ErrNotMainChain
 		}
-
 		if len(tx.KeyHashes) <= 1 {
 			return ErrInvalidMultiSigKeyHashCount
 		}
@@ -63,7 +61,9 @@ func init() {
 		return nil
 	}, func(ctx *data.Context, Fee *amount.Amount, t transaction.Transaction, coord *common.Coordinate) (interface{}, error) {
 		tx := t.(*CreateMultiSigAccount)
-
+		if !transaction.IsMainChain(ctx.ChainCoord()) {
+			return nil, ErrNotMainChain
+		}
 		if len(tx.KeyHashes) <= 1 {
 			return nil, ErrInvalidMultiSigKeyHashCount
 		}
@@ -89,16 +89,15 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
-		chainCoord := ctx.ChainCoord()
-		fromBalance, err := ctx.AccountBalance(tx.From())
+		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(chainCoord, Fee); err != nil {
+		if err := fromAcc.SubBalance(Fee); err != nil {
 			return nil, err
 		}
 
-		addr := common.NewAddress(coord, chainCoord, 0)
+		addr := common.NewAddress(coord, 0)
 		if is, err := ctx.IsExistAccount(addr); err != nil {
 			return nil, err
 		} else if is {
@@ -199,8 +198,8 @@ func (tx *CreateMultiSigAccount) ReadFrom(r io.Reader) (int64, error) {
 func (tx *CreateMultiSigAccount) MarshalJSON() ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString(`{`)
-	buffer.WriteString(`"chain_coord":`)
-	if bs, err := tx.ChainCoord_.MarshalJSON(); err != nil {
+	buffer.WriteString(`"type":`)
+	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)
@@ -208,13 +207,6 @@ func (tx *CreateMultiSigAccount) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"timestamp":`)
 	if bs, err := json.Marshal(tx.Timestamp_); err != nil {
-		return nil, err
-	} else {
-		buffer.Write(bs)
-	}
-	buffer.WriteString(`,`)
-	buffer.WriteString(`"type":`)
-	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)

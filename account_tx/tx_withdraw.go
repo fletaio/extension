@@ -15,12 +15,11 @@ import (
 )
 
 func init() {
-	data.RegisterTransaction("fleta.Withdraw", func(coord *common.Coordinate, t transaction.Type) transaction.Transaction {
+	data.RegisterTransaction("fleta.Withdraw", func(t transaction.Type) transaction.Transaction {
 		return &Withdraw{
 			Base: Base{
 				Base: transaction.Base{
-					ChainCoord_: coord,
-					Type_:       t,
+					Type_: t,
 				},
 			},
 			Vout: []*transaction.TxOut{},
@@ -64,15 +63,14 @@ func init() {
 			}
 		}
 
-		chainCoord := ctx.ChainCoord()
-		fromBalance, err := ctx.AccountBalance(tx.From())
+		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(chainCoord, Fee); err != nil {
+		if err := fromAcc.SubBalance(Fee); err != nil {
 			return nil, err
 		}
-		if err := fromBalance.SubBalance(chainCoord, outsum); err != nil {
+		if err := fromAcc.SubBalance(outsum); err != nil {
 			return nil, err
 		}
 		ctx.Commit(sn)
@@ -145,8 +143,8 @@ func (tx *Withdraw) ReadFrom(r io.Reader) (int64, error) {
 func (tx *Withdraw) MarshalJSON() ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString(`{`)
-	buffer.WriteString(`"chain_coord":`)
-	if bs, err := tx.ChainCoord_.MarshalJSON(); err != nil {
+	buffer.WriteString(`"type":`)
+	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)
@@ -154,13 +152,6 @@ func (tx *Withdraw) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"timestamp":`)
 	if bs, err := json.Marshal(tx.Timestamp_); err != nil {
-		return nil, err
-	} else {
-		buffer.Write(bs)
-	}
-	buffer.WriteString(`,`)
-	buffer.WriteString(`"type":`)
-	if bs, err := json.Marshal(tx.Type_); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)
