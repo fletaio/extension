@@ -3,9 +3,9 @@ package account_tx
 import (
 	"io"
 
-	"git.fleta.io/fleta/common"
-	"git.fleta.io/fleta/common/util"
-	"git.fleta.io/fleta/core/transaction"
+	"github.com/fletaio/common"
+	"github.com/fletaio/common/util"
+	"github.com/fletaio/core/transaction"
 )
 
 // Base is the parts of account model based transaction functions that are not changed by derived one

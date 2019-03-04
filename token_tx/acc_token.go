@@ -3,9 +3,9 @@ package token_tx
 import (
 	"io"
 
-	"git.fleta.io/fleta/common"
-	"git.fleta.io/fleta/core/account"
-	"git.fleta.io/fleta/core/data"
+	"github.com/fletaio/common"
+	"github.com/fletaio/core/account"
+	"github.com/fletaio/core/data"
 )
 
 func init() {

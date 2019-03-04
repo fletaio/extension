@@ -6,15 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"git.fleta.io/fleta/common/hash"
+	"github.com/fletaio/common/hash"
 
-	"git.fleta.io/fleta/common"
-	"git.fleta.io/fleta/core/amount"
-	"git.fleta.io/fleta/core/kernel"
-	"git.fleta.io/fleta/extension/account_tx"
-	"git.fleta.io/fleta/extension/token_tx"
-	"git.fleta.io/fleta/framework/router"
-	"git.fleta.io/fleta/javascript"
+	"github.com/fletaio/common"
+	"github.com/fletaio/core/amount"
+	"github.com/fletaio/core/kernel"
+	"github.com/fletaio/extension/account_tx"
+	"github.com/fletaio/extension/token_tx"
+	"github.com/fletaio/framework/router"
+	"github.com/fletaio/javascript"
 )
 
 //DApp TODO

@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"io"
 
-	"git.fleta.io/fleta/core/amount"
-	"git.fleta.io/fleta/extension/account_def"
+	"github.com/fletaio/core/amount"
+	"github.com/fletaio/extension/account_def"
 
-	"git.fleta.io/fleta/common"
-	"git.fleta.io/fleta/common/hash"
-	"git.fleta.io/fleta/common/util"
-	"git.fleta.io/fleta/core/data"
-	"git.fleta.io/fleta/core/transaction"
+	"github.com/fletaio/common"
+	"github.com/fletaio/common/hash"
+	"github.com/fletaio/common/util"
+	"github.com/fletaio/core/data"
+	"github.com/fletaio/core/transaction"
 )
 
 func init() {

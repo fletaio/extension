@@ -3,8 +3,8 @@ package dappChainTest
 import (
 	"encoding/hex"
 
-	"git.fleta.io/fleta/common"
-	"git.fleta.io/fleta/core/key"
+	"github.com/fletaio/common"
+	"github.com/fletaio/core/key"
 )
 
 type accCoordGenerator1 struct {
