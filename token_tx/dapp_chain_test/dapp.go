@@ -48,7 +48,7 @@ func (d *DApp) InitDAppChain(Address common.Address, ObserverInfos []token_tx.Ob
 	SeedNodes := []string{"formulator_1:3000"}
 
 	ObConfig := GetDAppConfig("dapp_observer_1", SeedNodes, "", DAppChainCoord, "dapp_observer_1", ObserverPhashs)
-	r, err := router.NewRouter(&ObConfig.Router)
+	r, err := router.NewRouter(&ObConfig.Router, kn.ChainCoord())
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +67,7 @@ func (d *DApp) InitDAppChain(Address common.Address, ObserverInfos []token_tx.Ob
 	if d.DAppRouter == nil {
 		log.Println("***** DAppRouter is nil *****")
 		var err error
-		d.DAppRouter, err = router.NewRouter(&FmConfig.Router)
+		d.DAppRouter, err = router.NewRouter(&FmConfig.Router, kn.ChainCoord())
 		if err != nil {
 			panic(err)
 		}

@@ -390,7 +390,7 @@ func CreateKernel(ID string, Config *kernel.Config) *kernel.Kernel {
 	}
 	rewarder := &Rewarder{}
 
-	r, err := router.NewRouter(&Config.Router)
+	r, err := router.NewRouter(&Config.Router, kn.ChainCoord())
 	if err != nil {
 		panic(err)
 	}
