@@ -1,4 +1,4 @@
-package dappChainTest
+package address
 
 import (
 	"encoding/hex"
@@ -55,9 +55,6 @@ type Addresses struct {
 	DAppAccount    *Key
 }
 
-var MainCoor = common.NewCoordinate(0, 0)
-var DappCoor *common.Coordinate
-
 var ADDR = Addresses{
 	MainObserver: []*Key{
 		NewKey("cca49818f6c49cf57b6c420cdcd98fcae08850f56d2ff5b8d287fddc7f9ede08"),
@@ -88,22 +85,24 @@ func init() {
 	{
 		acg := &accCoordGenerator1{idx: 1}
 		for i := 0; i < len(ADDR.MainFormulator); i++ {
-			addr := common.NewAddress(acg.Generate(), MainCoor, 0)
+			addr := common.NewAddress(acg.Generate(), 0)
 			ADDR.MainFormulator[i].Addr = addr
 		}
-		ADDR.MainAccount.Addr = common.NewAddress(acg.Generate(), MainCoor, 0)
+		ADDR.MainAccount.Addr = common.NewAddress(acg.Generate(), 0)
 	}
 }
 
-func dappInit(dappCoor *common.Coordinate) {
+var DappCoor *common.Coordinate
+
+func DappInit(dappCoor *common.Coordinate) {
 	DappCoor = dappCoor
 	{
 		acg := &accCoordGenerator1{idx: 1}
 		for i := 0; i < len(ADDR.DAppFormulator); i++ {
-			addr := common.NewAddress(acg.Generate(), DappCoor, 0)
+			addr := common.NewAddress(acg.Generate(), 0)
 			ADDR.DAppFormulator[i].Addr = addr
 		}
-		ADDR.DAppAccount.Addr = common.NewAddress(acg.Generate(), DappCoor, 0)
+		ADDR.DAppAccount.Addr = common.NewAddress(acg.Generate(), 0)
 	}
 
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/fletaio/core/amount"
+
 	"github.com/fletaio/common"
 	"github.com/fletaio/core/account"
 	"github.com/fletaio/core/data"
@@ -14,7 +16,8 @@ func init() {
 	data.RegisterAccount("fleta.TokenAccount", func(t account.Type) account.Account {
 		return &TokenAccount{
 			Base: account.Base{
-				Type_: t,
+				Type_:    t,
+				Balance_: amount.NewCoinAmount(0, 0),
 			},
 		}
 	}, func(loader data.Loader, a account.Account, signers []common.PublicHash) error {

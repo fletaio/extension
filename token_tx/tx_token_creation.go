@@ -36,6 +36,7 @@ func init() {
 
 		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
+			log.Println(err)
 			return err
 		}
 
