@@ -119,17 +119,18 @@ func RunMainChain() (*kernel.Kernel, []*formulator.Formulator) {
 		GenCoord := common.NewCoordinate(0, 0)
 		act := data.NewAccounter(GenCoord)
 		tran := data.NewTransactor(GenCoord)
-		if err := initChainComponent(act, tran); err != nil {
+		evt := data.NewEventer(GenCoord)
+		if err := initChainComponent(act, tran, evt); err != nil {
 			panic(err)
 		}
-		GenesisContextData, err := initGenesisContextData(act, tran)
+		GenesisContextData, err := initGenesisContextData(act, tran, evt)
 		if err != nil {
 			panic(err)
 		}
 
 		StoreRoot := "./mainchain/observer/" + common.NewPublicHash(obkey.PublicKey()).String()
 
-		ks, err := kernel.NewStore(StoreRoot+"/kernel", 1, act, tran, true)
+		ks, err := kernel.NewStore(StoreRoot+"/kernel", 1, act, tran, evt, true)
 		if err != nil {
 			panic(err)
 		}
@@ -168,10 +169,11 @@ func RunMainChain() (*kernel.Kernel, []*formulator.Formulator) {
 		GenCoord := common.NewCoordinate(0, 0)
 		act := data.NewAccounter(GenCoord)
 		tran := data.NewTransactor(GenCoord)
-		if err := initChainComponent(act, tran); err != nil {
+		evt := data.NewEventer(GenCoord)
+		if err := initChainComponent(act, tran, evt); err != nil {
 			panic(err)
 		}
-		GenesisContextData, err := initGenesisContextData(act, tran)
+		GenesisContextData, err := initGenesisContextData(act, tran, evt)
 		if err != nil {
 			panic(err)
 		}
@@ -180,7 +182,7 @@ func RunMainChain() (*kernel.Kernel, []*formulator.Formulator) {
 
 		//os.RemoveAll(StoreRoot)
 
-		ks, err := kernel.NewStore(StoreRoot+"/kernel", 1, act, tran, true)
+		ks, err := kernel.NewStore(StoreRoot+"/kernel", 1, act, tran, evt, true)
 		if err != nil {
 			panic(err)
 		}
@@ -243,7 +245,7 @@ type txFee struct {
 	Fee  *amount.Amount
 }
 
-func initChainComponent(act *data.Accounter, tran *data.Transactor) error {
+func initChainComponent(act *data.Accounter, tran *data.Transactor, evt *data.Eventer) error {
 	TxFeeTable := map[string]*txFee{
 		"fleta.CreateAccount":         &txFee{CreateAccountTransctionType, amount.COIN.MulC(10)},
 		"fleta.CreateMultiSigAccount": &txFee{CreateMultiSigAccountTransctionType, amount.COIN.MulC(10)},
@@ -283,8 +285,8 @@ func initChainComponent(act *data.Accounter, tran *data.Transactor) error {
 	return nil
 }
 
-func initGenesisContextData(act *data.Accounter, tran *data.Transactor) (*data.ContextData, error) {
-	loader := data.NewEmptyLoader(act.ChainCoord(), act, tran)
+func initGenesisContextData(act *data.Accounter, tran *data.Transactor, evt *data.Eventer) (*data.ContextData, error) {
+	loader := data.NewEmptyLoader(act.ChainCoord(), act, tran, evt)
 	ctd := data.NewContextData(loader, nil)
 
 	addFormulator(loader, ctd, common.MustParsePublicHash("2NDLwtFxtrtUzy6Dga8mpzJDS5kapdWBKyptMhehNVB"), common.MustParseAddress("3CUsUpvEK"), "sandbox.fr00001")
