@@ -48,7 +48,7 @@ type Addresses struct {
 	MainFormulator []*Key
 	MainAccount    *Key
 
-	MainToken *Key
+	MainTokenAccount *Key
 
 	DAppObserver   []*Key
 	DAppFormulator []*Key
@@ -66,8 +66,8 @@ var ADDR = Addresses{
 	MainFormulator: []*Key{
 		NewKey("ef475a14258d0a6f061293628e299a78e6abd7d46f0eb544c473045c84dffa31"),
 	},
-	MainAccount: NewKey("5e0dc680d12a728f60a708dcdbfb8d2c2aaea3ee5748d12bd9358f1015e3d18b"),
-	MainToken:   NewKey("116034cda48d0704426ae2141a6ea8d9a4193862cebfc9a25aab53063916caac"),
+	MainAccount:      NewKey("5e0dc680d12a728f60a708dcdbfb8d2c2aaea3ee5748d12bd9358f1015e3d18b"),
+	MainTokenAccount: NewKey("116034cda48d0704426ae2141a6ea8d9a4193862cebfc9a25aab53063916caac"),
 	DAppObserver: []*Key{
 		NewKey("246fd0687a0cc717a5af8ae2067fcdd05e9227f27b37e3a5387081037b340b7a"),
 		NewKey("5e0dc680d12a728f60a708dcdbfb8d2c2aaea3ee5748d12bd9358f1015e3d18b"),

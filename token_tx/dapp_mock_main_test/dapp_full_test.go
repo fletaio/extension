@@ -1,6 +1,7 @@
 package dappchaintest
 
 import (
+	"encoding/binary"
 	"log"
 	"os"
 	"testing"
@@ -33,19 +34,10 @@ func Test_dapp_chain(t *testing.T) {
 	t.Run("dapp_test", func(t *testing.T) {
 		mainkn, frlist := mainchain.RunMainChain()
 		mainkn.AddEventHandler(&DappStarterEventHandler{
-			mainkn: mainkn,
-			TokenCreationInformation: token_tx.TokenCreationInformation{
-				ObserverInfos: []token_tx.ObserverInfo{
-					{Hash: address.ADDR.DAppObserver[0].Hash, URL: "opserver_0"},
-					{Hash: address.ADDR.DAppObserver[1].Hash, URL: "opserver_1"},
-					{Hash: address.ADDR.DAppObserver[2].Hash, URL: "opserver_2"},
-					{Hash: address.ADDR.DAppObserver[3].Hash, URL: "opserver_3"},
-					{Hash: address.ADDR.DAppObserver[4].Hash, URL: "opserver_4"},
-				},
-			},
+			mainkn:          mainkn,
 			accountAddr:     address.ADDR.MainAccount.Addr,
 			accountSigner:   address.ADDR.MainAccount.Signer,
-			TokenPublicHash: address.ADDR.MainToken.Hash,
+			TokenPublicHash: address.ADDR.MainTokenAccount.Hash,
 		})
 
 		for _, fr := range frlist {
@@ -63,7 +55,7 @@ func Test_dapp_chain(t *testing.T) {
 			}
 			t := cc.(*token_tx.TokenCreation)
 			t.From_ = address.ADDR.MainAccount.Addr
-			t.TokenPublicHash = common.MustParsePublicHash(address.ADDR.MainToken.Hash)
+			t.TokenPublicHash = common.MustParsePublicHash(address.ADDR.MainTokenAccount.Hash)
 			t.Seq_ = mainkn.Loader().Seq(address.ADDR.MainAccount.Addr) + 1
 
 			sig0, _ := address.ADDR.MainAccount.Signer.Sign(t.Hash())
@@ -93,13 +85,47 @@ func (eh *DappStarterEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block
 		case *token_tx.TokenCreation:
 			// if tx's coordinate == dapp chain coord
 			coord := common.NewCoordinate(b.Header.Height(), uint16(i))
+			log.Println("token_tx.TokenCreation", coord.Height, coord.Index)
+
 			addr := common.NewAddress(coord, 0)
-			address.ADDR.MainToken.Addr = addr
+			address.ADDR.MainTokenAccount.Addr = addr
 			// check hash and genesis context hash
 			if tx.TokenPublicHash.String() != eh.TokenPublicHash {
 				continue
 			}
-			go func(coord *common.Coordinate, tx *token_tx.TokenCreation) {
+			go func(addr common.Address) {
+				{
+					// start Transfer
+					cc, err := eh.mainkn.Loader().Transactor().NewByTypeName("fleta.Transfer")
+					if err != nil {
+						panic(err)
+					}
+					t := cc.(*account_tx.Transfer)
+
+					t.Seq_ = eh.mainkn.Loader().Seq(eh.accountAddr) + 1
+					t.From_ = address.ADDR.MainAccount.Addr
+					t.To = address.ADDR.MainTokenAccount.Addr
+					t.Amount = amount.NewCoinAmount(500000, 0)
+
+					sig1, _ := address.ADDR.MainAccount.Signer.Sign(t.Hash())
+					sigs1 := []common.Signature{sig1}
+
+					eh.mainkn.AddTransaction(t, sigs1)
+					// end Transfer
+				}
+			}(addr)
+
+		case *account_tx.Transfer:
+			if tx.From_ != address.ADDR.MainAccount.Addr || tx.To != address.ADDR.MainTokenAccount.Addr {
+				continue
+			}
+
+			Height := binary.LittleEndian.Uint32(address.ADDR.MainTokenAccount.Addr[:4])
+			Index := binary.LittleEndian.Uint16(address.ADDR.MainTokenAccount.Addr[4:6])
+			log.Println("account_tx.Transfer", Height, Index)
+			coord := common.NewCoordinate(Height, Index)
+
+			go func(coord *common.Coordinate) {
 				address.DappInitAddr(coord)
 				log.Println("coord.Index ", coord.Index, "coord.Height", coord.Height)
 
@@ -113,10 +139,17 @@ func (eh *DappStarterEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block
 				eh.formulatorList = frls
 
 				// genHash := eh.DApp.GenesisHash()
-				eh.TokenCreationInformation.GenesisContextHash = hash
+				eh.TokenCreationInformation = token_tx.TokenCreationInformation{
+					GenesisContextHash: hash,
+					ObserverInfos: []token_tx.ObserverInfo{
+						{Hash: address.ADDR.DAppObserver[0].Hash, URL: "opserver_0"},
+						{Hash: address.ADDR.DAppObserver[1].Hash, URL: "opserver_1"},
+						{Hash: address.ADDR.DAppObserver[2].Hash, URL: "opserver_2"},
+						{Hash: address.ADDR.DAppObserver[3].Hash, URL: "opserver_3"},
+						{Hash: address.ADDR.DAppObserver[4].Hash, URL: "opserver_4"},
+					},
+				}
 
-				// dapp_chain.RunChain(tx.KeyHash, addr, ObserverPhashs)
-				Seq := eh.mainkn.Loader().Seq(eh.accountAddr) + 1
 				{
 					// start CreateContract
 					cc, err := eh.mainkn.Loader().Transactor().NewByTypeName("fleta.ChainInitialization")
@@ -124,37 +157,17 @@ func (eh *DappStarterEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block
 						panic(err)
 					}
 					t := cc.(*token_tx.ChainInitialization)
-					t.From_ = eh.accountAddr
+					t.From_ = address.ADDR.MainTokenAccount.Addr
 					t.TokenCreationInformation = eh.TokenCreationInformation
-					t.Seq_ = Seq
-					Seq++
+					t.Seq_ = eh.mainkn.Loader().Seq(address.ADDR.MainTokenAccount.Addr) + 1
 
-					sig0, _ := eh.accountSigner.Sign(t.Hash())
+					sig0, _ := address.ADDR.MainTokenAccount.Signer.Sign(t.Hash())
 					sigs0 := []common.Signature{sig0}
 
 					eh.mainkn.AddTransaction(t, sigs0)
 					// end CreateContract
 				}
-				{
-					// start Transfer
-					cc, err := eh.mainkn.Loader().Transactor().NewByTypeName("fleta.Transfer")
-					if err != nil {
-						panic(err)
-					}
-					t := cc.(*account_tx.Transfer)
-
-					t.Seq_ = Seq
-					t.From_ = address.ADDR.MainAccount.Addr
-					t.To = address.ADDR.MainToken.Addr
-					t.Amount = amount.NewCoinAmount(500000, 0)
-
-					sig1, _ := address.ADDR.MainAccount.Signer.Sign(t.Hash())
-					sigs1 := []common.Signature{sig1}
-
-					eh.mainkn.AddTransaction(t, sigs1)
-					// end Transfer
-				}
-			}(coord, tx)
+			}(coord)
 
 		case *token_tx.ChainInitialization:
 			//check chaininfo

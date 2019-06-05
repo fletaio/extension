@@ -40,6 +40,16 @@ func init() {
 			return err
 		}
 
+		acc := loader.Accounter()
+		Name, err := acc.NameByType(fromAcc.Type())
+		if err != nil {
+			return err
+		}
+
+		if Name != "fleta.TokenAccount" {
+			return ErrFromTypeMustTokenAccount
+		}
+
 		if err := loader.Accounter().Validate(loader, fromAcc, signers); err != nil {
 			return err
 		}
