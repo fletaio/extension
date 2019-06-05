@@ -289,8 +289,8 @@ func initGenesisContextData(act *data.Accounter, tran *data.Transactor, evt *dat
 	loader := data.NewEmptyLoader(act.ChainCoord(), act, tran, evt)
 	ctd := data.NewContextData(loader, nil)
 
-	addFormulator(loader, ctd, common.MustParsePublicHash("2NDLwtFxtrtUzy6Dga8mpzJDS5kapdWBKyptMhehNVB"), common.MustParseAddress("3CUsUpvEK"), "sandbox.fr00001")
-	addSingleAccount(loader, ctd, common.MustParsePublicHash(address.ADDR.MainAccount.Hash), address.ADDR.MainAccount.Addr, "testaccount")
+	addFormulator(loader, ctd, common.MustParsePublicHash("2NDLwtFxtrtUzy6Dga8mpzJDS5kapdWBKyptMhehNVB"), address.ADDR.MainFormulator[0].Addr, "sandboxMain.fr00001")
+	addSingleAccount(loader, ctd, common.MustParsePublicHash(address.ADDR.MainAccount.Hash), address.ADDR.MainAccount.Addr, "dappCreateAccount")
 	return ctd, nil
 }
 

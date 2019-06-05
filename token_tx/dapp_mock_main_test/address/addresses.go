@@ -94,7 +94,7 @@ func init() {
 
 var DappCoor *common.Coordinate
 
-func DappInit(dappCoor *common.Coordinate) {
+func DappInitAddr(dappCoor *common.Coordinate) {
 	DappCoor = dappCoor
 	{
 		acg := &accCoordGenerator1{idx: 1}

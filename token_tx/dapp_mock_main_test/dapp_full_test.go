@@ -100,10 +100,10 @@ func (eh *DappStarterEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block
 				continue
 			}
 			go func(coord *common.Coordinate, tx *token_tx.TokenCreation) {
-				address.DappInit(coord)
+				address.DappInitAddr(coord)
 				log.Println("coord.Index ", coord.Index, "coord.Height", coord.Height)
 
-				dappkn, frls := dappchain.RunDappChain(coord)
+				dappkn, frls := dappchain.InitDappChain(coord)
 				hash, err := dappkn.Provider().Hash(0)
 				if err != nil {
 					panic(err)

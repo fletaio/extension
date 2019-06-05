@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/fletaio/extension/token_tx/dapp_mock_main_test/address"
+
 	"github.com/fletaio/common"
 	"github.com/fletaio/core/account"
 	"github.com/fletaio/core/amount"
@@ -58,7 +60,7 @@ const (
 	FormulationAccountType = account.Type(60)
 )
 
-func RunDappChain(GenCoord *common.Coordinate) (*kernel.Kernel, []*formulator.Formulator) {
+func InitDappChain(GenCoord *common.Coordinate) (*kernel.Kernel, []*formulator.Formulator) {
 	obstrs := []string{
 		"cd7cca6359869f4f58bb31aa11c2c4825d4621406f7b514058bc4dbe788c29be",
 		"d8744df1e76a7b76f276656c48b68f1d40804f86518524d664b676674fccdd8a",
@@ -283,8 +285,7 @@ func initGenesisContextData(act *data.Accounter, tran *data.Transactor, evt *dat
 	loader := data.NewEmptyLoader(act.ChainCoord(), act, tran, evt)
 	ctd := data.NewContextData(loader, nil)
 
-	// acg := &accCoordGenerator{}
-	addFormulator(loader, ctd, common.MustParsePublicHash("2NDLwtFxtrtUzy6Dga8mpzJDS5kapdWBKyptMhehNVB"), common.MustParseAddress("3CUsUpvEK"), "sandbox.fr00001")
+	addFormulator(loader, ctd, common.MustParsePublicHash("2NDLwtFxtrtUzy6Dga8mpzJDS5kapdWBKyptMhehNVB"), address.ADDR.DAppFormulator[0].Addr, "sandboxDapp.fr00001")
 	return ctd, nil
 }
 
