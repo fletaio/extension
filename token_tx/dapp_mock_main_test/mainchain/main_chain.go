@@ -259,7 +259,7 @@ func initChainComponent(act *data.Accounter, tran *data.Transactor, evt *data.Ev
 		"fleta.ChainInitialization":   &txFee{ChainInitializationTransctionType, amount.COIN.MulC(10)},
 		"fleta.TokenIssue":            &txFee{TokenIssueTransctionType, amount.COIN.MulC(10)},
 		"fleta.EngraveDapp":           &txFee{EngraveDappTransctionType, amount.COIN.MulC(10)},
-		"consensus.CreateFormulation": &txFee{CreateFormulationTransctionType, amount.COIN.MulC(50000)},
+		"consensus.CreateFormulation": &txFee{CreateFormulationTransctionType, amount.COIN.DivC(10)},
 		"consensus.RevokeFormulation": &txFee{RevokeFormulationTransctionType, amount.COIN.DivC(10)},
 	}
 	for name, item := range TxFeeTable {
