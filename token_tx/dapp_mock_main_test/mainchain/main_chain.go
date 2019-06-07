@@ -302,6 +302,7 @@ func addFormulator(loader data.Loader, ctd *data.ContextData, KeyHash common.Pub
 	acc := a.(*consensus.FormulationAccount)
 	acc.Address_ = addr
 	acc.Name_ = name
+	acc.Amount = amount.NewCoinAmount(0, 0)
 	acc.Balance_ = amount.NewCoinAmount(0, 0)
 	acc.KeyHash = KeyHash
 	ctd.CreatedAccountMap[acc.Address_] = acc
