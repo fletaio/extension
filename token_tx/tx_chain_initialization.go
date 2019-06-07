@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 
 	"github.com/fletaio/extension/account_tx"
 
@@ -71,24 +70,6 @@ func init() {
 		if err := fromAcc.SubBalance(Fee); err != nil {
 			return nil, err
 		}
-
-		addr := common.NewAddress(coord, 0)
-
-		if is, err := ctx.IsExistAccount(addr); err != nil {
-			return nil, err
-		} else if is {
-			return nil, ErrExistAddress
-		}
-
-		a, err := ctx.Accounter().NewByTypeName("fleta.TokenAccount")
-		if err != nil {
-			return nil, err
-		}
-		acc := a.(*TokenAccount)
-		acc.Address_ = addr
-		log.Println("fleta.TokenAccount ", addr.String())
-		acc.TokenCoord = *coord.Clone()
-		ctx.CreateAccount(acc)
 
 		ctx.Commit(sn)
 		return nil, nil

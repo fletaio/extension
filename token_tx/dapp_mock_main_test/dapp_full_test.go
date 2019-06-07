@@ -55,6 +55,7 @@ func Test_dapp_chain(t *testing.T) {
 			}
 			t := cc.(*token_tx.TokenCreation)
 			t.From_ = address.ADDR.MainAccount.Addr
+			t.TokenName = "testName"
 			t.TokenPublicHash = common.MustParsePublicHash(address.ADDR.MainTokenAccount.Hash)
 			t.Seq_ = mainkn.Loader().Seq(address.ADDR.MainAccount.Addr) + 1
 
@@ -134,6 +135,10 @@ func (eh *DappStarterEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block
 				if err != nil {
 					panic(err)
 				}
+
+				dappkn.AddEventHandler(&DappEventHandler{
+					mainkn: eh.mainkn,
+				})
 
 				eh.dappkn = dappkn
 				eh.formulatorList = frls
@@ -215,4 +220,55 @@ func (eh *DappStarterEventHandler) DoTransactionBroadcast(kn *kernel.Kernel, msg
 
 // DebugLog TEMP
 func (eh *DappStarterEventHandler) DebugLog(kn *kernel.Kernel, args ...interface{}) {
+}
+
+type DappEventHandler struct {
+	mainkn *kernel.Kernel
+}
+
+func (eh *DappEventHandler) AfterProcessBlock(kn *kernel.Kernel, b *block.Block, s *block.ObserverSigned, ctx *data.Context) {
+	height := b.Header.Height()
+	if height%10 == 0 {
+		{
+			// start CreateContract
+			cc, err := eh.mainkn.Loader().Transactor().NewByTypeName("fleta.EngraveDapp")
+			if err != nil {
+				panic(err)
+			}
+			t := cc.(*token_tx.EngraveDapp)
+			t.From_ = address.ADDR.MainTokenAccount.Addr
+			t.Seq_ = eh.mainkn.Loader().Seq(address.ADDR.MainTokenAccount.Addr) + 1
+
+			t.Height = height
+			t.BlockHash = b.Header.Hash()
+
+			sig0, _ := address.ADDR.MainTokenAccount.Signer.Sign(t.Hash())
+			sigs0 := []common.Signature{sig0}
+
+			eh.mainkn.AddTransaction(t, sigs0)
+			// end CreateContract
+		}
+	}
+}
+
+// OnProcessBlock called when processing a block to the chain (error prevent processing block)
+func (eh *DappEventHandler) OnProcessBlock(kn *kernel.Kernel, b *block.Block, s *block.ObserverSigned, ctx *data.Context) error {
+	return nil
+}
+
+// OnPushTransaction called when pushing a transaction to the transaction pool (error prevent push transaction)
+func (eh *DappEventHandler) OnPushTransaction(kn *kernel.Kernel, tx transaction.Transaction, sigs []common.Signature) error {
+	return nil
+}
+
+// AfterPushTransaction called when pushed a transaction to the transaction pool
+func (eh *DappEventHandler) AfterPushTransaction(kn *kernel.Kernel, tx transaction.Transaction, sigs []common.Signature) {
+}
+
+// DoTransactionBroadcast called when a transaction need to be broadcast
+func (eh *DappEventHandler) DoTransactionBroadcast(kn *kernel.Kernel, msg *message_def.TransactionMessage) {
+}
+
+// DebugLog TEMP
+func (eh *DappEventHandler) DebugLog(kn *kernel.Kernel, args ...interface{}) {
 }

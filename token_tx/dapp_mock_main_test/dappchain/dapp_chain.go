@@ -258,6 +258,7 @@ func initChainComponent(act *data.Accounter, tran *data.Transactor, evt *data.Ev
 		"consensus.CreateFormulation": &txFee{CreateFormulationTransctionType, amount.COIN.DivC(10)},
 		"consensus.RevokeFormulation": &txFee{RevokeFormulationTransctionType, amount.COIN.DivC(10)},
 	}
+
 	for name, item := range TxFeeTable {
 		if err := tran.RegisterType(name, item.Type, item.Fee); err != nil {
 			log.Println(name, item, err)
@@ -297,6 +298,7 @@ func addFormulator(loader data.Loader, ctd *data.ContextData, KeyHash common.Pub
 	acc := a.(*consensus.FormulationAccount)
 	acc.Address_ = addr
 	acc.Name_ = name
+	acc.Amount = amount.NewCoinAmount(0, 0)
 	acc.Balance_ = amount.NewCoinAmount(0, 0)
 	acc.KeyHash = KeyHash
 	ctd.CreatedAccountMap[acc.Address_] = acc

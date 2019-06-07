@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 
 	"github.com/fletaio/core/amount"
 	"github.com/fletaio/extension/account_tx"
@@ -34,10 +33,19 @@ func init() {
 			return ErrInvalidSequence
 		}
 
-		log.Println(tx.Seq(), ", ", tx.From().String(), " : ", loader.Seq(tx.From()))
 		fromAcc, err := loader.Account(tx.From())
 		if err != nil {
 			return err
+		}
+
+		acc := loader.Accounter()
+		Name, err := acc.NameByType(fromAcc.Type())
+		if err != nil {
+			return err
+		}
+
+		if Name != "fleta.TokenAccount" {
+			return ErrFromTypeMustTokenAccount
 		}
 
 		if err := loader.Accounter().Validate(loader, fromAcc, signers); err != nil {
@@ -71,9 +79,8 @@ func init() {
 // It is engraved dapp on main chain
 type EngraveDapp struct {
 	account_tx.Base
-	TokenAddress common.Address
-	Height       uint32
-	BlockHash    hash.Hash256
+	Height    uint32
+	BlockHash hash.Hash256
 }
 
 // Hash returns the hash value of it
@@ -85,11 +92,6 @@ func (tx *EngraveDapp) Hash() hash.Hash256 {
 func (tx *EngraveDapp) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
-		return wrote, err
-	} else {
-		wrote += n
-	}
-	if n, err := tx.TokenAddress.WriteTo(w); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -111,11 +113,6 @@ func (tx *EngraveDapp) WriteTo(w io.Writer) (int64, error) {
 func (tx *EngraveDapp) ReadFrom(r io.Reader) (int64, error) {
 	var read int64
 	if n, err := tx.Base.ReadFrom(r); err != nil {
-		return read, err
-	} else {
-		read += n
-	}
-	if n, err := tx.TokenAddress.ReadFrom(r); err != nil {
 		return read, err
 	} else {
 		read += n
@@ -161,13 +158,6 @@ func (tx *EngraveDapp) MarshalJSON() ([]byte, error) {
 	buffer.WriteString(`,`)
 	buffer.WriteString(`"from":`)
 	if bs, err := tx.From_.MarshalJSON(); err != nil {
-		return nil, err
-	} else {
-		buffer.Write(bs)
-	}
-	buffer.WriteString(`,`)
-	buffer.WriteString(`"token_address":`)
-	if bs, err := tx.TokenAddress.MarshalJSON(); err != nil {
 		return nil, err
 	} else {
 		buffer.Write(bs)

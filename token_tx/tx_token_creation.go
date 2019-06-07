@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 
+	"github.com/fletaio/common/util"
+
 	"github.com/fletaio/extension/account_tx"
 
 	"github.com/fletaio/core/amount"
@@ -75,6 +77,7 @@ func init() {
 		}
 		acc := a.(*TokenAccount)
 		acc.Address_ = addr
+		acc.Name_ = tx.TokenName
 		log.Println("fleta.TokenAccount ", addr.String())
 		acc.TokenCoord = *coord.Clone()
 		acc.KeyHash = tx.TokenPublicHash
@@ -92,6 +95,7 @@ func init() {
 // It is used to make a single account
 type TokenCreation struct {
 	account_tx.Base
+	TokenName       string
 	TokenPublicHash common.PublicHash
 }
 
@@ -104,6 +108,11 @@ func (tx *TokenCreation) Hash() hash.Hash256 {
 func (tx *TokenCreation) WriteTo(w io.Writer) (int64, error) {
 	var wrote int64
 	if n, err := tx.Base.WriteTo(w); err != nil {
+		return wrote, err
+	} else {
+		wrote += n
+	}
+	if n, err := util.WriteString(w, tx.TokenName); err != nil {
 		return wrote, err
 	} else {
 		wrote += n
@@ -122,6 +131,12 @@ func (tx *TokenCreation) ReadFrom(r io.Reader) (int64, error) {
 	if n, err := tx.Base.ReadFrom(r); err != nil {
 		return read, err
 	} else {
+		read += n
+	}
+	if value, n, err := util.ReadString(r); err != nil {
+		return read, err
+	} else {
+		tx.TokenName = value
 		read += n
 	}
 	if n, err := tx.TokenPublicHash.ReadFrom(r); err != nil {
