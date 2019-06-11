@@ -54,6 +54,10 @@ func init() {
 		}
 		ctx.AddSeq(tx.From())
 
+		if tx.Amount.Less(amount.COIN.DivC(10)) {
+			return nil, ErrDustAmount
+		}
+
 		fromAcc, err := ctx.Account(tx.From())
 		if err != nil {
 			return nil, err

@@ -57,6 +57,9 @@ func init() {
 
 		outsum := Fee.Clone()
 		for n, vout := range tx.Vout {
+			if vout.Amount.Less(amount.COIN.DivC(10)) {
+				return nil, ErrDustAmount
+			}
 			outsum = outsum.Add(vout.Amount)
 			if err := ctx.CreateUTXO(transaction.MarshalID(coord.Height, coord.Index, uint16(n)), vout); err != nil {
 				return nil, err
